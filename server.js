@@ -13,9 +13,15 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || "";
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || "";
 
-app.use(express.static(path.join(__dirname)));
+const rootDir = __dirname;
+const publicDir = path.join(__dirname, "public");
+const indexFile = require("fs").existsSync(path.join(publicDir, "index.html"))
+  ? path.join(publicDir, "index.html")
+  : path.join(rootDir, "index.html");
+
+app.use(express.static(require("fs").existsSync(publicDir) ? publicDir : rootDir));
 
 const userSchema = new mongoose.Schema(
   {
@@ -69,7 +75,7 @@ function createToken(user) {
 }
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(indexFile);
 });
 
 app.get("/api/health", (req, res) => {
