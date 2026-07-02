@@ -14,6 +14,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || "";
+const JWT_SECRET = process.env.JWT_SECRET || "manual_center_secret";
 
 app.use(express.static(path.join(__dirname)));
 
@@ -44,31 +45,51 @@ const manualSchema = new mongoose.Schema(
 const User = mongoose.model("User", userSchema);
 const Manual = mongoose.model("Manual", manualSchema);
 
+let dbReady = false;
+
 async function connectDB() {
-  if (!MONGODB_URI || MONGODB_URI.includes("YOUR_DB_PASSWORD")) {
-    console.log("MongoDB URI chưa được cấu hình. Server vẫn chạy không kết nối DB.");
+  if (!MONGODB_URI) {
+    console.log("MongoDB URI chưa được cấu hình.");
     return false;
   }
 
   try {
-    await mongoose.connect(MONGODB_URI);
+    mongoose.set("bufferCommands", false);
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000
+    });
+    dbReady = true;
     console.log("MongoDB connected");
     return true;
   } catch (err) {
+    dbReady = false;
     console.error("MongoDB connection error:", err.message);
     return false;
   }
 }
 
+function requireDB(res) {
+  if (!dbReady) {
+    res.status(503).json({
+      success: false,
+      message: "Database chưa sẵn sàng. Vui lòng kiểm tra MONGODB_URI và kết nối Atlas."
+    });
+    return false;
+  }
+  return true;
+}
+
 function createToken(user) {
   return jwt.sign(
     { id: user._id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || "secret",
+    JWT_SECRET,
     { expiresIn: "7d" }
   );
 }
 
 async function seedAdmin() {
+  if (!dbReady) return;
+
   const adminEmail = "admin@gmail.com";
   const adminPassword = "admin123";
 
@@ -91,10 +112,15 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "API is running" });
+  res.json({
+    success: true,
+    dbReady
+  });
 });
 
 app.post("/api/auth/register", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -127,6 +153,8 @@ app.post("/api/auth/register", async (req, res) => {
 });
 
 app.post("/api/auth/login", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -156,6 +184,8 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.get("/api/manuals", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     const manuals = await Manual.find().sort({ createdAt: -1 });
     res.json({ success: true, data: manuals });
@@ -165,6 +195,8 @@ app.get("/api/manuals", async (req, res) => {
 });
 
 app.post("/api/manuals", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     const manual = await Manual.create(req.body);
     res.json({ success: true, data: manual });
@@ -174,6 +206,8 @@ app.post("/api/manuals", async (req, res) => {
 });
 
 app.patch("/api/manuals/:id/permission", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     const { allowDownload } = req.body;
     const manual = await Manual.findByIdAndUpdate(
@@ -188,6 +222,8 @@ app.patch("/api/manuals/:id/permission", async (req, res) => {
 });
 
 app.delete("/api/manuals/:id", async (req, res) => {
+  if (!requireDB(res)) return;
+
   try {
     await Manual.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: "Đã xóa tài liệu" });
@@ -196,9 +232,11 @@ app.delete("/api/manuals/:id", async (req, res) => {
   }
 });
 
-connectDB().then(async () => {
+(async () => {
+  await connectDB();
   await seedAdmin();
+
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-});
+})();
