@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<style>
+:root{
+    --bg:#eef3ff;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --primary:#2563eb;
+    --primary-2:#7c3aed;
+    --border:#e2e8f0;
+    --shadow:0 14px 40px rgba(15,23,42,.10);
+    --shadow-hover:0 22px 55px rgba(37,99,235,.18);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    background:
+        radial-gradient(circle at top left, rgba(37,99,235,.16), transparent 24%),
+        radial-gradient(circle at top right, rgba(124,58,237,.12), transparent 20%),
+        linear-gradient(135deg,#edf4ff 0%, #f8fbff 45%, #eef2ff 100%);
+    overflow-x:hidden;
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:linear-gradient(120deg, rgba(255,255,255,.18), transparent 30%, rgba(255,255,255,.08) 60%, transparent 100%);
+    opacity:.55;
+}
+#loading{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#ffffff,#eff6ff);
+}
+.loader{
+    width:58px; height:58px; border:5px solid #dbeafe; border-top-color:var(--primary);
+    border-radius:50%; animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0; transform:translateY(22px)} to{opacity:1; transform:translateY(0)}}
+@keyframes float{0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 rgba(37,99,235,0)} 50%{box-shadow:0 0 30px rgba(37,99,235,.16)}}
+header{
+    position:sticky; top:0; z-index:1000;
+    display:flex; align-items:center; justify-content:space-between; gap:20px;
+    padding:16px 24px;
+    background:rgba(255,255,255,.78);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid rgba(226,232,240,.7);
+    box-shadow:0 8px 24px rgba(15,23,42,.06);
+}
+.logo{display:flex; align-items:center; gap:12px; cursor:pointer}
+.logo-icon{
+    width:50px; height:50px; border-radius:16px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff; display:grid; place-items:center; font-size:20px;
+    box-shadow:0 10px 20px rgba(37,99,235,.24);
+    animation:float 4s ease-in-out infinite;
+}
+.search-box{
+    flex:1; max-width:560px; display:flex; align-items:center; gap:10px;
+    background:rgba(248,250,252,.95); border:1px solid var(--border);
+    padding:0 14px; border-radius:16px; transition:.25s ease;
+}
+.search-box:focus-within{border-color:rgba(37,99,235,.4); box-shadow:0 0 0 4px rgba(37,99,235,.10)}
+.search-box input{
+    width:100%; border:none; outline:none; background:transparent; height:48px; color:var(--text);
+}
+.header-right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+button{
+    border:none; cursor:pointer; transition:.25s ease;
+    position:relative; overflow:hidden;
+}
+.notify-btn,.login-btn,.btn-primary,.btn-secondary,.btn-danger{
+    height:44px; padding:0 18px; border-radius:14px; font-weight:700;
+}
+.notify-btn{width:44px; background:#eff6ff; color:var(--primary)}
+.login-btn,.btn-primary{
+    background:linear-gradient(135deg,var(--primary),#1d4ed8);
+    color:#fff;
+    box-shadow:0 12px 24px rgba(37,99,235,.20);
+}
+.btn-secondary{background:#e2e8f0; color:var(--text)}
+.btn-danger{background:#dc2626; color:#fff}
+button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
+button:active{transform:translateY(0)}
+#sidebar{
+    position:fixed; left:0; top:84px; bottom:0; width:250px;
+    background:rgba(255,255,255,.88);
+    backdrop-filter:blur(14px);
+    border-right:1px solid rgba(226,232,240,.9);
+    padding:20px; overflow:auto;
+}
+.sidebar-title{font-weight:800; margin-bottom:12px}
+#sidebar ul{list-style:none; padding:0; margin:0}
+#sidebar li{
+    padding:12px 14px; border-radius:14px; margin-bottom:8px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; transition:.25s ease;
+}
+#sidebar li.active,#sidebar li:hover{
+    background:linear-gradient(135deg,#eff6ff,#eef2ff);
+    color:var(--primary);
+    transform:translateX(4px);
+}
+.sidebar-bottom{margin-top:20px; display:grid; gap:10px}
+.sidebar-bottom button{
+    width:100%; padding:12px; border-radius:14px; background:#f8fafc; font-weight:700;
+}
+main{margin-left:250px; padding:24px}
+.page{display:none; animation:fadeUp .45s ease}
+.page.active{display:block}
+.hero{
+    display:grid; grid-template-columns:1.2fr .8fr; gap:24px; align-items:center;
+    background:radial-gradient(circle at top right, rgba(37,99,235,.12), transparent 30%), linear-gradient(135deg,rgba(255,255,255,.95),rgba(239,246,255,.95));
+    padding:32px; border-radius:28px; box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,.65);
+    animation:pulseGlow 6s ease-in-out infinite;
+}
+.hero h1{font-size:clamp(30px,4vw,48px); line-height:1.08; margin-bottom:12px}
+.hero p{color:var(--muted); line-height:1.7}
+.hero-search{display:flex; gap:10px; margin:18px 0}
+.hero-search input{
+    flex:1; height:48px; border:1px solid var(--border); border-radius:14px; padding:0 14px; outline:none;
+    background:#fff; color:var(--text);
+}
+.hero-stat{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
+.hero-stat > div,.category-card,.manual-card,.upload-form,.auth-box,.panel-card{
+    background:var(--card); border-radius:20px; box-shadow:var(--shadow);
+}
+.hero-stat > div{
+    padding:16px; text-align:center; transition:.25s ease; border:1px solid rgba(226,232,240,.7);
+}
+.hero-stat > div:hover,.category-card:hover,.manual-card:hover,.panel-card:hover{
+    transform:translateY(-6px);
+    box-shadow:var(--shadow-hover);
+}
+.section-title{margin:30px 0 16px}
+.section-title h2{margin-bottom:6px}
+.section-title p{margin:0;color:var(--muted)}
+.category-grid,.manual-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+.category-card{
+    padding:18px; cursor:pointer; transition:.25s ease; border:1px solid rgba(226,232,240,.7);
+}
+.category-card .icon{
+    width:50px; height:50px; border-radius:16px;
+    background:linear-gradient(135deg,#eff6ff,#e0e7ff);
+    display:grid; place-items:center; color:var(--primary); font-size:20px;
+}
+.category-card h3{margin:14px 0 6px}
+.category-card p{margin:0;color:var(--muted); line-height:1.6}
+.manual-card{
+    overflow:hidden; transition:.25s ease; border:1px solid rgba(226,232,240,.7);
+}
+.manual-thumb img{width:100%; height:185px; object-fit:cover; display:block; transition:transform .4s ease}
+.manual-card:hover .manual-thumb img{transform:scale(1.05)}
+.manual-content{padding:18px}
+.manual-category,.manual-tag,.badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px; border-radius:999px;
+    background:#eff6ff; color:var(--primary);
+    font-size:13px; font-weight:700;
+}
+.manual-info{display:flex; gap:14px; color:var(--muted); margin:12px 0; flex-wrap:wrap}
+.manual-action{display:flex; gap:10px; flex-wrap:wrap}
+.upload-page,.auth-wrapper,.admin-wrapper{padding:10px 0}
+.upload-form,.auth-box,.panel-card{max-width:920px; padding:24px; border:1px solid rgba(226,232,240,.7)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block; margin-bottom:8px; font-weight:700}
+.form-group input,.form-group select{
+    width:100%; height:48px; border:1px solid var(--border); border-radius:14px;
+    padding:0 14px; outline:none; background:#fff; color:var(--text);
+}
+.form-group input:focus,.form-group select:focus{border-color:rgba(37,99,235,.45); box-shadow:0 0 0 4px rgba(37,99,235,.08)}
+.auth-wrapper{display:grid; place-items:center; min-height:60vh}
+.auth-box{text-align:center}
+.lock-note{
+    margin-top:10px; padding:12px 14px; border-radius:12px;
+    background:#fff7ed; color:#9a3412; font-weight:700;
+}
+#topButton,#darkMode{
+    position:fixed; width:54px; height:54px; border-radius:50%;
+    color:#fff; z-index:999; border:none; box-shadow:0 12px 26px rgba(15,23,42,.18);
+}
+#topButton{right:20px; bottom:20px; background:linear-gradient(135deg,var(--primary),#1d4ed8); display:none}
+#darkMode{left:20px; bottom:20px; background:#0f172a}
+.toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:#0f172a; color:#fff; padding:12px 18px; border-radius:999px;
+    display:none; z-index:10000; box-shadow:0 12px 30px rgba(0,0,0,.18)
+}
+.toast.show{display:block; animation:fadeUp .2s ease}
+.dark{
+    --bg:#0b1120; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --border:#243041;
+}
+.dark header,.dark #sidebar,.dark .upload-form,.dark .auth-box,.dark .panel-card{background:#111827}
+.dark .search-box,.dark .hero-search input,.dark .form-group input,.dark .form-group select{background:#0f172a;color:var(--text)}
+.dark .hero{background:linear-gradient(135deg,#111827,#0f172a)}
+.empty-state{
+    padding:20px; background:var(--card); border-radius:16px; box-shadow:var(--shadow);
+    text-align:center; color:var(--muted);
+}
+.admin-toolbar{display:flex; gap:10px; flex-wrap:wrap; margin:16px 0 24px}
+.admin-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+.panel-card{padding:20px}
+.panel-card h3{margin-top:0}
+.reveal{opacity:0; transform:translateY(18px); transition:all .6s ease}
+.reveal.show{opacity:1; transform:translateY(0)}
+.ripple{
+    position:absolute; border-radius:50%; transform:scale(0);
+    background:rgba(255,255,255,.35); animation:rippleAnim .55s linear; pointer-events:none;
+}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+.admin-item{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 0; border-bottom:1px solid var(--border);
+}
+.admin-item:last-child{border-bottom:none}
+.delete-icon,.toggle-icon,.small-btn{
+    width:38px; height:38px; border-radius:10px; display:grid; place-items:center; flex-shrink:0;
+}
+.delete-icon{background:#fee2e2; color:#dc2626}
+.toggle-icon{background:#e0f2fe; color:#0369a1}
+.small-btn{background:#eff6ff; color:var(--primary)}
+.admin-actions{display:flex; gap:8px; align-items:center}
+.admin-form-row{display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end}
+.permission-on{background:#dcfce7; color:#166534}
+.permission-off{background:#fee2e2; color:#991b1b}
+.manual-page h1{margin-top:10px}
+.subnav{
+    display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;
+}
+.subnav button{
+    background:#fff; color:var(--text); border:1px solid var(--border);
+}
+.auth-tabs{
+    display:flex; gap:10px; justify-content:center; margin-bottom:16px; flex-wrap:wrap;
+}
+.auth-tabs button.active{background:var(--primary); color:#fff}
+.hidden{display:none !important}
+@media (max-width: 900px){
+    #sidebar{position:static; width:auto; top:auto; bottom:auto}
+    main{margin-left:0}
+    .hero,.category-grid,.manual-grid,.hero-stat,.admin-grid,.admin-form-row{grid-template-columns:1fr}
+    header{flex-direction:column; align-items:stretch}
+    .search-box{max-width:none}
+}
+</style>
+</head>
+<body>
+<div id="loading"><div class="loader"></div><h2>MANUAL CENTER</h2><p>Đang tải hệ thống...</p></div>
+<div class="toast"><span></span></div>
+
+<header>
+    <div class="logo" onclick="showPage('home')">
+        <div class="logo-icon"><i class="fa-solid fa-book-open"></i></div>
+        <div><h2>Manual Center</h2><span id="userRoleLabel">Khách truy cập</span></div>
+    </div>
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="globalSearch" type="text" placeholder="Tìm kiếm thiết bị, model, hãng sản xuất...">
+    </div>
+    <div class="header-right">
+        <button class="notify-btn" id="notifyBtn" type="button"><i class="fa-regular fa-bell"></i></button>
+        <button class="login-btn" onclick="showPage('login')" type="button" id="loginBtn">Đăng nhập</button>
+        <button class="btn-secondary" id="logoutBtn" type="button" style="display:none;">Đăng xuất</button>
+    </div>
+</header>
+
+<aside id="sidebar">
+    <div class="sidebar-title">Danh mục</div>
+    <ul id="categoryList"></ul>
+    <div class="sidebar-bottom">
+        <button onclick="showPage('upload')"><i class="fa-solid fa-upload"></i> Upload tài liệu</button>
+        <button onclick="openAdmin()"><i class="fa-solid fa-lock"></i> Trang quản trị</button>
+    </div>
+</aside>
+
+<main>
+    <section id="home" class="page active">
+        <div class="hero reveal">
+            <div class="hero-left">
+                <h1>Kho tài liệu hướng dẫn sử dụng thiết bị</h1>
+                <p>Lưu trữ tập trung tài liệu kỹ thuật, hướng dẫn vận hành, catalogue, bản vẽ và video dành cho doanh nghiệp.</p>
+                <div class="hero-search">
+                    <input id="heroSearch" placeholder="Tìm kiếm theo tên thiết bị hoặc Model...">
+                    <button class="btn-primary" id="heroSearchBtn" type="button"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
+                </div>
+                <div class="hero-stat">
+                    <div class="reveal"><h2 id="statCategories">0</h2><span>Danh mục</span></div>
+                    <div class="reveal"><h2 id="statManuals">0</h2><span>Tài liệu</span></div>
+                    <div class="reveal"><h2 id="statDownloads">0</h2><span>Lượt tải</span></div>
+                    <div class="reveal"><h2 id="statPublic">0</h2><span>Tài liệu mở</span></div>
+                </div>
+                <div class="subnav">
+                    <button type="button" onclick="scrollToSection('featuredCategories')">Xem danh mục</button>
+                    <button type="button" onclick="scrollToSection('latestManuals')">Xem tài liệu</button>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="hero-image reveal">
+                    <img src="images/banner.svg" alt="Banner" style="width:100%;border-radius:22px">
+                </div>
+            </div>
+        </div>
+
+        <section id="featuredCategories" class="feature-section">
+            <div class="section-title reveal">
+                <h2>Danh mục nổi bật</h2>
+                <p>Truy cập nhanh các nhóm thiết bị phổ biến.</p>
+            </div>
+            <div id="categoryGrid" class="category-grid"></div>
+        </section>
+
+        <section id="latestManuals" class="latest-section">
+            <div class="section-title reveal">
+                <h2>Hướng dẫn mới nhất</h2>
+                <p>Các tài liệu vừa được cập nhật.</p>
+            </div>
+            <div id="manualGrid" class="manual-grid"></div>
+            <div id="emptyState" class="empty-state" style="display:none;">Không tìm thấy tài liệu phù hợp.</div>
+        </section>
+    </section>
+
+    <section id="manual" class="page">
+        <div class="manual-page reveal">
+            <div class="section-title"><h2>Chi tiết tài liệu</h2><p>Trang xem tài liệu mẫu.</p></div>
+            <span class="manual-tag" id="detailCategory">Danh mục</span>
+            <h1 id="detailName">Tài liệu</h1>
+            <p id="detailDesc">Mô tả tài liệu.</p>
+            <div class="manual-info">
+                <span class="badge"><i class="fa-regular fa-eye"></i> <span id="detailViews">0</span> lượt xem</span>
+                <span class="badge"><i class="fa-solid fa-download"></i> <span id="detailDownloads">0</span> lượt tải</span>
+                <span class="badge" id="detailPermission">Được phép tải</span>
+            </div>
+            <div class="manual-action">
+                <button class="btn-primary" style="margin-top:16px" type="button" id="detailDownloadBtn">Tải tài liệu</button>
+                <button class="btn-secondary" style="margin-top:16px" type="button" onclick="showPage('home')">Quay lại</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="upload" class="page">
+        <div class="upload-page reveal">
+            <div class="section-title"><h2>Upload tài liệu</h2><p>Chỉ người dùng đã đăng nhập mới có thể thêm tài liệu.</p></div>
+            <form id="uploadForm" class="upload-form">
+                <div class="form-group"><label>Tên tài liệu</label><input id="docName" type="text" placeholder="Nhập tên tài liệu"></div>
+                <div class="form-group"><label>Danh mục</label><select id="docCategory"></select></div>
+                <div class="form-group"><label>Chọn file</label><input id="docFile" type="file"></div>
+                <button class="btn-primary" type="submit">Lưu tài liệu</button>
+            </form>
+        </div>
+    </section>
+
+    <section id="login" class="page">
+        <div class="auth-wrapper">
+            <div class="auth-box reveal">
+                <div class="auth-logo"><i class="fa-solid fa-book-open"></i></div>
+                <h1>Đăng nhập / Đăng ký</h1>
+                <p>Khách có thể đăng ký bằng email, đăng nhập Google hoặc OTP điện thoại.</p>
+                <div class="auth-tabs">
+                    <button class="btn-secondary active" type="button" data-auth="email">Email</button>
+                    <button class="btn-secondary" type="button" data-auth="google">Google</button>
+                    <button class="btn-secondary" type="button" data-auth="otp">OTP</button>
+                </div>
+                <form id="emailAuthForm">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input id="authEmail" type="email" placeholder="example@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu</label>
+                        <input id="authPassword" type="password" placeholder="********">
+                    </div>
+                    <button type="submit" class="btn-primary auth-btn">Đăng nhập / Đăng ký</button>
+                </form>
+                <form id="googleAuthForm" class="hidden">
+                    <div class="lock-note">Mô phỏng đăng nhập Google</div>
+                    <button type="submit" class="btn-primary auth-btn">Tiếp tục với Google</button>
+                </form>
+                <form id="otpAuthForm" class="hidden">
+                    <div class="form-group">
+                        <label>Số điện thoại</label>
+                        <input id="authPhone" type="tel" placeholder="09xxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Mã OTP</label>
+                        <input id="authOtp" type="text" placeholder="123456">
+                    </div>
+                    <button type="button" class="btn-secondary" id="sendOtpBtn">Gửi OTP</button>
+                    <button type="submit" class="btn-primary auth-btn" style="margin-top:10px;">Xác thực OTP</button>
+                </form>
+                <div class="lock-note">Tài khoản khách chỉ được xem tài liệu, và tải những tài liệu được phép tải.</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="admin" class="page">
+        <div class="section-title reveal">
+            <h2>Dashboard quản trị</h2>
+            <p>Chỉ admin mới có quyền truy cập.</p>
+        </div>
+
+        <div class="hero-stat" style="margin-top:16px">
+            <div class="reveal"><h2 id="totalManuals">0</h2><span>Tài liệu</span></div>
+            <div class="reveal"><h2 id="totalViews">0</h2><span>Lượt xem</span></div>
+            <div class="reveal"><h2 id="totalDownloads">0</h2><span>Lượt tải</span></div>
+            <div class="reveal"><h2 id="savedTheme">ON</h2><span>Dark mode</span></div>
+        </div>
+
+        <div class="admin-grid" style="margin-top:16px">
+            <div class="panel-card reveal">
+                <h3>Quản lý danh mục</h3>
+                <div class="admin-form-row">
+                    <div class="form-group">
+                        <label>Tên danh mục</label>
+                        <input id="newCategoryName" type="text" placeholder="Nhập tên danh mục">
+                    </div>
+                    <div class="form-group">
+                        <label>Biểu tượng Font Awesome</label>
+                        <input id="newCategoryIcon" type="text" placeholder="fa-solid fa-solar-panel">
+                    </div>
+                    <button class="btn-primary" type="button" onclick="addCategory()">Thêm</button>
+                </div>
+                <div id="adminCategoryList"></div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Quản lý tài liệu</h3>
+                <p>Xem, xóa và bật/tắt quyền tải từng tài liệu.</p>
+                <div id="adminManualList"></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+"use strict";
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const body = document.body;
+const pages = $$(".page");
+
+const STORAGE_KEYS = { user:"manual_user", theme:"manual_theme", categories:"manual_categories", manuals:"manual_manuals", otp:"manual_otp" };
+
+const defaultCategories = [
+    { id: 1, name: "Năng lượng mặt trời", icon: "fa-solid fa-solar-panel" },
+    { id: 2, name: "Camera", icon: "fa-solid fa-video" },
+    { id: 3, name: "Thiết bị âm thanh", icon: "fa-solid fa-volume-high" },
+    { id: 4, name: "Màn hình LED", icon: "fa-solid fa-tv" },
+    { id: 5, name: "Điện lạnh", icon: "fa-solid fa-snowflake" },
+    { id: 6, name: "Khác", icon: "fa-solid fa-boxes-stacked" }
+];
+
+const defaultManuals = [
+    { id: 1, name: "Solar Inverter FR-SOL 5KW", category: "Năng lượng mặt trời", view: 1260, download: 320, allowDownload: true, image: "images/manual-01.jpg", desc: "Hướng dẫn cài đặt và vận hành inverter năng lượng mặt trời." },
+    { id: 2, name: "Camera IP Setup Guide", category: "Camera", view: 890, download: 145, allowDownload: true, image: "images/manual-01.jpg", desc: "Tài liệu lắp đặt và cấu hình hệ thống camera." },
+    { id: 3, name: "LED Display Operation Manual", category: "Màn hình LED", view: 620, download: 90, allowDownload: false, image: "images/manual-01.jpg", desc: "Hướng dẫn vận hành và bảo trì màn hình LED." }
+];
+
+let state = {
+    currentPage: localStorage.getItem("page") || "home",
+    theme: localStorage.getItem(STORAGE_KEYS.theme) === "true",
+    filter: "all",
+    search: "",
+    user: JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null"),
+    selectedAuth: "email",
+    selectedDetailId: 1
+};
+
+let categories = loadData(STORAGE_KEYS.categories, defaultCategories);
+let manuals = loadData(STORAGE_KEYS.manuals, defaultManuals);
+
+function loadData(key, fallback) {
+    const data = localStorage.getItem(key);
+    if (!data) return [...fallback];
+    try { return JSON.parse(data); } catch { return [...fallback]; }
+}
+function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+function persistAll() { saveData(STORAGE_KEYS.categories, categories); saveData(STORAGE_KEYS.manuals, manuals); }
+function isAdmin() { return state.user?.role === "admin"; }
+function isLoggedIn() { return !!state.user; }
+
+function saveUser(user) {
+    state.user = user;
+    if (user) localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+    else localStorage.removeItem(STORAGE_KEYS.user);
+    updateAuthUI();
+}
+
+function showToast(message) {
+    const toast = $(".toast");
+    if (!toast) return;
+    toast.querySelector("span").textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 2400);
+}
+
+function scrollToSection(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showPage(pageId) {
+    if (pageId === "admin" && !isAdmin()) {
+        showToast("Chỉ admin mới được truy cập trang quản trị.");
+        showPage("login");
+        return;
+    }
+    pages.forEach(page => page.classList.remove("active"));
+    const page = $("#" + pageId);
+    if (page) {
+        page.classList.add("active");
+        state.currentPage = pageId;
+        localStorage.setItem("page", pageId);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    runReveal();
+}
+
+function openAdmin() {
+    if (!isAdmin()) {
+        showToast("Bạn cần đăng nhập tài khoản admin.");
+        showPage("login");
+        return;
+    }
+    showPage("admin");
+}
+
+function requireLoginForDownload(id) {
+    const doc = manuals.find(item => item.id === id) || manuals.find(item => item.id === state.selectedDetailId);
+    if (!doc) return;
+    if (!isLoggedIn()) {
+        showToast("Bạn cần đăng nhập để tải tài liệu.");
+        showPage("login");
+        return;
+    }
+    if (!doc.allowDownload && !isAdmin()) {
+        showToast("Tài liệu này hiện không cho phép tải.");
+        return;
+    }
+    showToast("Đang chuẩn bị tải tài liệu...");
+    if (doc.allowDownload) doc.download += 1;
+    renderManuals();
+    renderAdminLists();
+}
+
+function updateAuthUI() {
+    const loginBtn = $("#loginBtn");
+    const logoutBtn = $("#logoutBtn");
+    const roleLabel = $("#userRoleLabel");
+    const authTabs = $$(".auth-tabs button");
+    const emailForm = $("#emailAuthForm");
+    const googleForm = $("#googleAuthForm");
+    const otpForm = $("#otpAuthForm");
+
+    if (state.user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-flex";
+        roleLabel.textContent = state.user.role === "admin" ? "Quản trị viên" : "Khách đã đăng nhập";
+    } else {
+        loginBtn.style.display = "inline-flex";
+        logoutBtn.style.display = "none";
+        roleLabel.textContent = "Khách truy cập";
+    }
+
+    authTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.auth === state.selectedAuth));
+    emailForm.classList.toggle("hidden", state.selectedAuth !== "email");
+    googleForm.classList.toggle("hidden", state.selectedAuth !== "google");
+    otpForm.classList.toggle("hidden", state.selectedAuth !== "otp");
+}
+
+function renderCategoryMenu() {
+    const list = $("#categoryList");
+    const grid = $("#categoryGrid");
+    const uploadCategory = $("#docCategory");
+    if (!list || !grid || !uploadCategory) return;
+
+    list.innerHTML = `
+        <li class="${state.filter === "all" ? "active" : ""}" data-filter="all"><i class="fa-solid fa-layer-group"></i>Tất cả</li>
+        ${categories.map(cat => `<li data-filter="${cat.name.toLowerCase()}"><i class="${cat.icon}"></i>${cat.name}</li>`).join("")}
+    `;
+
+    grid.innerHTML = `
+        <div class="category-card reveal" data-category="all">
+            <div class="icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h3>Tất cả</h3>
+            <p>Xem toàn bộ tài liệu trong hệ thống.</p>
+        </div>
+        ${categories.map(cat => `
+            <div class="category-card reveal" data-category="${cat.name.toLowerCase()}">
+                <div class="icon"><i class="${cat.icon}"></i></div>
+                <h3>${cat.name}</h3>
+                <p>Danh mục ${cat.name}.</p>
+            </div>
+        `).join("")}
+    `;
+
+    uploadCategory.innerHTML = `
+        <option value="">-- Chọn danh mục --</option>
+        ${categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join("")}
+    `;
+
+    list.querySelectorAll("li").forEach(item => {
+        item.addEventListener("click", function () {
+            list.querySelectorAll("li").forEach(i => i.classList.remove("active"));
+            this.classList.add("active");
+            const filter = this.dataset.filter || "all";
+            state.filter = filter;
+            renderManuals();
+            scrollToSection("latestManuals");
+        });
+    });
+
+    grid.querySelectorAll(".category-card").forEach(card => {
+        card.addEventListener("click", function () {
+            state.filter = this.dataset.category || "all";
+            renderManuals();
+            scrollToSection("latestManuals");
+        });
+    });
+
+    updateStats();
+}
+
+function renderManuals() {
+    const grid = $("#manualGrid");
+    const emptyState = $("#emptyState");
+    if (!grid) return;
+
+    const keyword = `${state.search} ${$("#globalSearch")?.value || ""} ${$("#heroSearch")?.value || ""}`.toLowerCase().trim();
+    const filtered = manuals.filter(item => {
+        const matchesCategory = state.filter === "all" || item.category.toLowerCase().includes(state.filter);
+        const matchesSearch = !keyword || `${item.name} ${item.category} ${item.desc}`.toLowerCase().includes(keyword);
+        return matchesCategory && matchesSearch;
+    });
+
+    grid.innerHTML = filtered.map(item => `
+        <div class="manual-card reveal">
+            <div class="manual-thumb">
+                <img src="${item.image}" alt="${item.name}">
+            </div>
+            <div class="manual-content">
+                <div class="manual-category">${item.category}</div>
+                <h3>${item.name}</h3>
+                <p>${item.desc}</p>
+                <div class="manual-info">
+                    <span><i class="fa-regular fa-eye"></i> ${item.view.toLocaleString()}</span>
+                    <span><i class="fa-solid fa-download"></i> ${item.download.toLocaleString()}</span>
+                    <span class="badge ${item.allowDownload ? "permission-on" : "permission-off"}">${item.allowDownload ? "Có thể tải" : "Không tải"}</span>
+                </div>
+                <div class="manual-action">
+                    <button class="btn-primary" type="button" onclick="openDetail(${item.id})">Xem chi tiết</button>
+                    <button class="btn-secondary" type="button" onclick="requireLoginForDownload(${item.id})">${item.allowDownload ? "Tải tài liệu" : "Không cho tải"}</button>
+                </div>
+            </div>
+        </div>
+    `).join("");
+
+    if (emptyState) emptyState.style.display = filtered.length ? "none" : "block";
+    updateStats();
+    renderAdminLists();
+    runReveal();
+}
+
+function openDetail(id) {
+    const doc = manuals.find(item => item.id === id);
+    if (!doc) return;
+    state.selectedDetailId = id;
+    $("#detailCategory").textContent = doc.category;
+    $("#detailName").textContent = doc.name;
+    $("#detailDesc").textContent = doc.desc;
+    $("#detailViews").textContent = doc.view.toLocaleString();
+    $("#detailDownloads").textContent = doc.download.toLocaleString();
+    $("#detailPermission").textContent = doc.allowDownload ? "Được phép tải" : "Không cho tải";
+    $("#detailPermission").className = "badge " + (doc.allowDownload ? "permission-on" : "permission-off");
+    $("#detailDownloadBtn").textContent = doc.allowDownload ? "Tải tài liệu" : "Không cho tải";
+    $("#detailDownloadBtn").onclick = () => requireLoginForDownload(id);
+    doc.view += 1;
+    renderManuals();
+    showPage("manual");
+}
+
+function updateStats() {
+    $("#statCategories").textContent = categories.length;
+    $("#statManuals").textContent = manuals.length;
+    $("#statDownloads").textContent = manuals.reduce((sum, item) => sum + item.download, 0).toLocaleString();
+    $("#statPublic").textContent = manuals.filter(item => item.allowDownload).length;
+    $("#totalManuals").textContent = manuals.length;
+    $("#totalViews").textContent = manuals.reduce((sum, item) => sum + item.view, 0).toLocaleString();
+    $("#totalDownloads").textContent = manuals.reduce((sum, item) => sum + item.download, 0).toLocaleString();
+    $("#savedTheme").textContent = state.theme ? "ON" : "OFF";
+}
+
+function renderAdminLists() {
+    const catList = $("#adminCategoryList");
+    const manList = $("#adminManualList");
+    if (!catList || !manList) return;
+
+    if (!isAdmin()) {
+        catList.innerHTML = "";
+        manList.innerHTML = "<div class='lock-note'>Không có quyền truy cập.</div>";
+        return;
+    }
+
+    catList.innerHTML = categories.map(cat => `
+        <div class="admin-item">
+            <div><strong>${cat.name}</strong><br><small>${cat.icon}</small></div>
+            <div class="admin-actions">
+                <button class="delete-icon" type="button" title="Xóa danh mục" onclick="deleteCategory(${cat.id})"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+    `).join("");
+
+    manList.innerHTML = manuals.map(item => `
+        <div class="admin-item">
+            <div>
+                <strong>${item.name}</strong><br>
+                <small>${item.category} • ${item.view.toLocaleString()} lượt xem • ${item.download.toLocaleString()} lượt tải</small>
+            </div>
+            <div class="admin-actions">
+                <button class="toggle-icon" type="button" title="Bật/tắt tải" onclick="toggleDownload(${item.id})"><i class="fa-solid ${item.allowDownload ? "fa-lock-open" : "fa-lock"}"></i></button>
+                <button class="delete-icon" type="button" title="Xóa tài liệu" onclick="deleteManual(${item.id})"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+    `).join("");
+}
+
+function addCategory() {
+    if (!isAdmin()) return showToast("Chỉ admin được thêm danh mục.");
+    const name = $("#newCategoryName").value.trim();
+    const icon = $("#newCategoryIcon").value.trim() || "fa-solid fa-layer-group";
+    if (!name) return showToast("Vui lòng nhập tên danh mục.");
+    if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return showToast("Danh mục đã tồn tại.");
+    categories.unshift({ id: Date.now(), name, icon });
+    $("#newCategoryName").value = "";
+    $("#newCategoryIcon").value = "";
+    persistAll();
+    renderCategoryMenu();
+    showToast("Đã thêm danh mục.");
+}
+
+function deleteCategory(id) {
+    if (!isAdmin()) return showToast("Chỉ admin được xóa danh mục.");
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return;
+    categories = categories.filter(c => c.id !== id);
+    manuals = manuals.filter(m => m.category !== cat.name);
+    persistAll();
+    renderCategoryMenu();
+    renderManuals();
+    showToast("Đã xóa danh mục và các tài liệu liên quan.");
+}
+
+function deleteManual(id) {
+    if (!isAdmin()) return showToast("Chỉ admin được xóa tài liệu.");
+    manuals = manuals.filter(m => m.id !== id);
+    persistAll();
+    renderManuals();
+    showToast("Đã xóa tài liệu.");
+}
+
+function toggleDownload(id) {
+    if (!isAdmin()) return showToast("Chỉ admin được chỉnh quyền tải.");
+    const doc = manuals.find(m => m.id === id);
+    if (!doc) return;
+    doc.allowDownload = !doc.allowDownload;
+    persistAll();
+    renderManuals();
+    showToast(doc.allowDownload ? "Đã bật quyền tải." : "Đã tắt quyền tải.");
+}
+
+function applyTheme() {
+    body.classList.toggle("dark", state.theme);
+    localStorage.setItem(STORAGE_KEYS.theme, String(state.theme));
+    updateStats();
+}
+
+function runReveal() {
+    const elements = document.querySelectorAll(".reveal");
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add("show");
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15 });
+    elements.forEach(el => observer.observe(el));
+}
+
+function addRippleEffect(btn) {
+    btn.addEventListener("click", function (e) {
+        const ripple = document.createElement("span");
+        const size = Math.max(this.clientWidth, this.clientHeight);
+        const rect = this.getBoundingClientRect();
+        ripple.className = "ripple";
+        ripple.style.width = ripple.style.height = size + "px";
+        ripple.style.left = (e.clientX - rect.left - size / 2) + "px";
+        ripple.style.top = (e.clientY - rect.top - size / 2) + "px";
+        this.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+    });
+}
+
+function bindSearch(inputSelector) {
+    const input = $(inputSelector);
+    if (!input) return;
+    input.addEventListener("input", function () {
+        state.search = this.value.trim();
+        renderManuals();
+    });
+}
+
+window.addEventListener("load", () => {
+    const loading = $("#loading");
+    if (loading) {
+        setTimeout(() => {
+            loading.style.opacity = "0";
+            loading.style.pointerEvents = "none";
+            setTimeout(() => loading.remove(), 300);
+        }, 600);
+    }
+    renderCategoryMenu();
+    renderManuals();
+    applyTheme();
+    updateAuthUI();
+    if (state.currentPage === "admin" && !isAdmin()) state.currentPage = "home";
+    showPage(state.currentPage);
+    runReveal();
+});
+
+bindSearch("#globalSearch");
+bindSearch("#heroSearch");
+
+$("#heroSearchBtn")?.addEventListener("click", () => {
+    state.search = $("#heroSearch")?.value.trim() || "";
+    renderManuals();
+    showPage("home");
+});
+
+$("#notifyBtn")?.addEventListener("click", () => showToast("Bạn có 3 thông báo mới."));
+$("#logoutBtn")?.addEventListener("click", () => {
+    saveUser(null);
+    showToast("Đã đăng xuất.");
+    showPage("home");
+});
+
+$("#detailDownloadBtn")?.addEventListener("click", () => requireLoginForDownload(state.selectedDetailId));
+
+document.querySelectorAll("[data-auth]").forEach(btn => {
+    btn.addEventListener("click", function () {
+        state.selectedAuth = this.dataset.auth;
+        updateAuthUI();
+    });
+});
+
+$("#emailAuthForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = $("#authEmail")?.value.trim();
+    const password = $("#authPassword")?.value.trim();
+    if (!email || !password) return showToast("Vui lòng nhập email và mật khẩu.");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return showToast("Email không hợp lệ.");
+    saveUser({ email, role: "user", auth: "email" });
+    showToast("Đăng nhập/đăng ký bằng email thành công.");
+    showPage("home");
+});
+
+$("#googleAuthForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    showToast("Chức năng Google login cần backend/OAuth thật.");
+});
+
+$("#sendOtpBtn")?.addEventListener("click", () => {
+    const phone = $("#authPhone")?.value.trim();
+    if (!phone) return showToast("Nhập số điện thoại trước.");
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    localStorage.setItem(STORAGE_KEYS.otp, JSON.stringify({ phone, otp, time: Date.now() }));
+    showToast("Đã tạo OTP demo: " + otp);
+});
+
+$("#otpAuthForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const phone = $("#authPhone")?.value.trim();
+    const otp = $("#authOtp")?.value.trim();
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.otp) || "null");
+    if (!phone || !otp) return showToast("Vui lòng nhập số điện thoại và OTP.");
+    if (!saved || saved.phone !== phone || saved.otp !== otp) return showToast("OTP không đúng.");
+    saveUser({ email: phone, role: "user", auth: "otp" });
+    showToast("Xác thực OTP thành công.");
+    showPage("home");
+});
+
+$("#uploadForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!isLoggedIn()) return showToast("Bạn cần đăng nhập để upload tài liệu.");
+    const name = $("#docName")?.value.trim();
+    const category = $("#docCategory")?.value;
+    const file = $("#docFile")?.files?.[0];
+    if (!name || !category || !file) return showToast("Vui lòng nhập đủ thông tin.");
+    manuals.unshift({
+        id: Date.now(),
+        name,
+        category,
+        view: 0,
+        download: 0,
+        allowDownload: true,
+        image: "images/manual-01.jpg",
+        desc: "Tài liệu mới vừa được thêm vào hệ thống."
+    });
+    persistAll();
+    renderManuals();
+    showToast("Đã thêm tài liệu mới.");
+    showPage("home");
+});
+
+$(".logo")?.addEventListener("click", () => showPage("home"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") showPage("home"); });
+document.querySelectorAll("button").forEach(addRippleEffect);
+
+const topButton = document.createElement("button");
+topButton.id = "topButton";
+topButton.innerHTML = "↑";
+document.body.appendChild(topButton);
+Object.assign(topButton.style, {
+    position: "fixed", right: "20px", bottom: "20px", width: "54px", height: "54px",
+    borderRadius: "50%", background: "linear-gradient(135deg,var(--primary),#1d4ed8)",
+    color: "#fff", display: "none"
+});
+window.addEventListener("scroll", () => {
+    topButton.style.display = window.scrollY > 300 ? "block" : "none";
+});
+topButton.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+const darkButton = document.createElement("button");
+darkButton.id = "darkMode";
+darkButton.innerHTML = "🌙";
+document.body.appendChild(darkButton);
+Object.assign(darkButton.style, {
+    position: "fixed", left: "20px", bottom: "20px", width: "54px", height: "54px",
+    borderRadius: "50%", background: "#0f172a", color: "#fff"
+});
+darkButton.onclick = () => {
+    state.theme = !state.theme;
+    applyTheme();
+};
+
+showPage(state.currentPage);
+renderCategoryMenu();
+renderManuals();
+updateAuthUI();
+</script>
+</body>
+</html>
