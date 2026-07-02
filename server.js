@@ -13,15 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || "";
+const MONGODB_URI = process.env.MONGODB_URI || "";
 
-const rootDir = __dirname;
-const publicDir = path.join(__dirname, "public");
-const indexFile = require("fs").existsSync(path.join(publicDir, "index.html"))
-  ? path.join(publicDir, "index.html")
-  : path.join(rootDir, "index.html");
-
-app.use(express.static(require("fs").existsSync(publicDir) ? publicDir : rootDir));
+app.use(express.static(path.join(__dirname)));
 
 const userSchema = new mongoose.Schema(
   {
@@ -74,8 +68,26 @@ function createToken(user) {
   );
 }
 
+async function seedAdmin() {
+  const adminEmail = "admin@gmail.com";
+  const adminPassword = "admin123";
+
+  const existed = await User.findOne({ email: adminEmail });
+  if (existed) return;
+
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  await User.create({
+    email: adminEmail,
+    passwordHash,
+    role: "admin",
+    authType: "email"
+  });
+
+  console.log("Admin seeded: admin@gmail.com / admin123");
+}
+
 app.get("/", (req, res) => {
-  res.sendFile(indexFile);
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.get("/api/health", (req, res) => {
@@ -184,7 +196,8 @@ app.delete("/api/manuals/:id", async (req, res) => {
   }
 });
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  await seedAdmin();
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
