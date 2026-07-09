@@ -1,5 +1,0 @@
-PORT=3000
-SUPABASE_URL=https://galanvpizasmguhotgqk.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_aUYxRZ3GvT7qw3SmNMsriQ_vTqW_6Zx
-SUPABASE_SECRET_KEY=sb_secret_JLUknuWLVAW-mGS0UtKojQ_Fse0ezAt
-JWT_SECRET=manual_center_secret
