@@ -152,6 +152,7 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
 .app-main{
     margin-left:260px;
     padding:22px;
+    padding-bottom:96px;
 }
 
 .page{display:none}
@@ -443,29 +444,29 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
 }
 
 #topButton{
-    position:fixed;
-    right:20px;
-    bottom:20px;
-    width:54px;
-    height:54px;
-    border-radius:50%;
-    color:#fff;
-    background:linear-gradient(135deg,var(--primary),#1d4ed8);
-    z-index:999;
-    border:none;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), #1d4ed8);
+    z-index: 999;
+    border: none;
 }
 
 #themeBtn{
-    position:fixed;
-    left:20px;
-    bottom:20px;
-    width:54px;
-    height:54px;
-    border-radius:50%;
-    color:#fff;
-    background:#0f172a;
-    z-index:999;
-    border:none;
+    position: fixed;
+    left: 20px;
+    bottom: 20px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    color: #fff;
+    background: #0f172a;
+    z-index: 999;
+    border: none;
 }
 
 .toast{
@@ -503,6 +504,15 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
 .dark .hero-shell,
 .dark .detail-shell{
     background:#111827;
+}
+.dark .hero-panel-card{
+    background:linear-gradient(135deg,#0f172a,#111827);
+    border:1px solid #243041;
+    color:var(--text);
+}
+.dark .hero-panel-card h3,
+.dark .hero-panel-card p{
+    color:var(--text);
 }
 .dark .search-box,
 .dark .hero-search input,

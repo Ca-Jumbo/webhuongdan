@@ -3,7 +3,7 @@
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
-const STORAGE_KEYS = { user: "manual_user", theme: "manual_theme" };
+const STORAGE_KEYS = { user: "manual_user", theme: "manual_theme", token: "manual_token" };
 
 const ROADMAP = {
     phase: 4,
@@ -20,6 +20,7 @@ let state = {
     currentPage: localStorage.getItem("page") || "home",
     theme: localStorage.getItem(STORAGE_KEYS.theme) === "true",
     user: JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null"),
+    token: localStorage.getItem(STORAGE_KEYS.token) || "",
     search: ""
 };
 
@@ -32,13 +33,29 @@ let ratings = [];
 let attachments = [];
 let activityLogs = [];
 let downloadLogs = [];
+let usersCount = 0;
+
+function authHeaders() {
+    return state.token ? { Authorization: `Bearer ${state.token}` } : {};
+}
 
 function apiFetch(path, options = {}) {
     return fetch(path, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(),
+            ...(options.headers || {})
+        },
         ...options
     }).then(async res => {
-        try { return await res.json(); } catch { return { success: false, message: "Phản hồi server không hợp lệ." }; }
+        let data;
+        try {
+            data = await res.json();
+        } catch {
+            return { success: false, message: "Phản hồi server không hợp lệ." };
+        }
+        if (!res.ok) return { success: false, message: data?.message || `HTTP ${res.status}`, data };
+        return data;
     });
 }
 
@@ -51,8 +68,19 @@ function showToast(message) {
     showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-function isAdmin() { return state.user?.role === "admin"; }
+function isAdmin() { return state.user?.role === "admin" || state.user?.role === "super_admin" || state.user?.role === "editor"; }
 function isLoggedIn() { return !!state.user; }
+
+function saveAuth(payload) {
+    state.user = payload?.user || null;
+    state.token = payload?.token || "";
+    if (state.user) localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(state.user));
+    else localStorage.removeItem(STORAGE_KEYS.user);
+    if (state.token) localStorage.setItem(STORAGE_KEYS.token, state.token);
+    else localStorage.removeItem(STORAGE_KEYS.token);
+    updateAuthUI();
+    renderProfile();
+}
 
 function saveUser(user) {
     state.user = user;
@@ -65,17 +93,19 @@ function saveUser(user) {
 function applyTheme() {
     document.documentElement.classList.toggle("dark", state.theme);
     localStorage.setItem(STORAGE_KEYS.theme, String(state.theme));
-    $("#themeBtn").innerHTML = state.theme ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    const btn = $("#themeBtn");
+    if (btn) btn.innerHTML = state.theme ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
 }
 
 function updateAuthUI() {
     const loginBtn = $("#loginBtn");
     const logoutBtn = $("#logoutBtn");
     const roleLabel = $("#userRoleLabel");
+    if (!loginBtn || !logoutBtn || !roleLabel) return;
     if (state.user) {
         loginBtn.style.display = "none";
         logoutBtn.style.display = "inline-flex";
-        roleLabel.textContent = state.user.role === "admin" ? "Quản trị viên" : "Khách đã đăng nhập";
+        roleLabel.textContent = isAdmin() ? "Quản trị viên" : "Khách đã đăng nhập";
     } else {
         loginBtn.style.display = "inline-flex";
         logoutBtn.style.display = "none";
@@ -90,18 +120,43 @@ function showPage(pageId) {
     }
     document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
     const page = $("#" + pageId);
-    if (page) {
-        page.classList.add("active");
-        state.currentPage = pageId;
-        localStorage.setItem("page", pageId);
-    }
+    if (!page) return;
+    page.classList.add("active");
+    state.currentPage = pageId;
+    localStorage.setItem("page", pageId);
+    if (pageId === "notifications") markAllNotificationsRead();
+    renderPage(pageId);
+}
+
+function renderPage(pageId) {
+    if (pageId === "home") renderHome();
+    if (pageId === "products") renderProducts();
+    if (pageId === "documents") renderDocuments();
+    if (pageId === "myDocs") renderMyDocs();
+    if (pageId === "myBookmarks") renderBookmarks();
+    if (pageId === "myRatings") renderRatings();
+    if (pageId === "activityLogPage") renderActivityLogs();
+    if (pageId === "attachmentsManager") renderAttachmentManager();
+    if (pageId === "notifications") renderNotifications();
+    if (pageId === "profile") renderProfile();
+    if (pageId === "admin") renderAdmin();
 }
 
 function normalizeText(v) { return (v || "").toString().toLowerCase(); }
-function matchSearch(item) { return !state.search || normalizeText(JSON.stringify(item)).includes(normalizeText(state.search)); }
+function safeJson(value) {
+    if (value == null) return "";
+    if (typeof value === "string") {
+        try { return JSON.stringify(JSON.parse(value)); } catch { return value; }
+    }
+    try { return JSON.stringify(value); } catch { return String(value); }
+}
+function matchSearch(item) {
+    const fields = [item?.name, item?.title, item?.brand, item?.description, item?.status, item?.fileType].join(" ");
+    return !state.search || normalizeText(fields).includes(normalizeText(state.search));
+}
 
 async function loadData() {
-    const [catRes, prodRes, manRes, notiRes, bmRes, ratingRes, attRes, logRes, dlogRes] = await Promise.all([
+    const [catRes, prodRes, manRes, notiRes, bmRes, ratingRes, attRes, logRes, dlogRes, usersRes] = await Promise.all([
         apiFetch("/api/categories"),
         apiFetch("/api/products"),
         apiFetch("/api/manuals"),
@@ -110,8 +165,10 @@ async function loadData() {
         apiFetch("/api/ratings"),
         apiFetch("/api/attachments"),
         apiFetch("/api/activity-logs"),
-        apiFetch("/api/download-logs")
+        apiFetch("/api/download-logs"),
+        apiFetch("/api/users-count")
     ]);
+
     if (catRes?.success) categories = catRes.data || [];
     if (prodRes?.success) products = prodRes.data || [];
     if (manRes?.success) manuals = manRes.data || [];
@@ -119,24 +176,22 @@ async function loadData() {
     if (bmRes?.success) bookmarks = bmRes.data || [];
     if (ratingRes?.success) ratings = ratingRes.data || [];
     if (attRes?.success) attachments = attRes.data || [];
-    if (logRes?.success) activityLogs = logRes.data || [];
+    if (logRes?.success) activityLogs = (logRes.data || []).map(item => ({ ...item, metadata: item.metadata }));
     if (dlogRes?.success) downloadLogs = dlogRes.data || [];
+    if (usersRes?.success) usersCount = usersRes.count || 0;
 }
 
 function getCategoryName(id) {
     return categories.find(c => String(c.id) === String(id))?.name || "Danh mục";
 }
-
 function getProductName(id) {
     return products.find(p => String(p.id) === String(id))?.name || "";
 }
-
 function getManualRating(id) {
     const items = ratings.filter(r => String(r.manualId) === String(id));
     if (!items.length) return "0.0";
     return (items.reduce((sum, r) => sum + (Number(r.value) || 0), 0) / items.length).toFixed(1);
 }
-
 function isBookmarked(id) {
     return bookmarks.some(b => String(b.manualId) === String(id) && String(b.userId) === String(state.user?.id || ""));
 }
@@ -145,12 +200,20 @@ function renderSearchSuggest() {
     const box = $("#searchSuggest");
     if (!box) return;
     const q = normalizeText($("#globalSearch")?.value || "");
-    if (!q) return box.style.display = "none";
+    if (!q) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
     const items = [
-        ...products.filter(p => normalizeText(p.name).includes(q)).slice(0, 4).map(p => ({ type: "product", label: p.name })),
-        ...manuals.filter(m => normalizeText(m.title).includes(q)).slice(0, 4).map(m => ({ type: "manual", label: m.title }))
+        ...products.filter(p => normalizeText(`${p.name} ${p.brand} ${p.description}`).includes(q)).slice(0, 4).map(p => ({ type: "product", id: p.id, label: p.name })),
+        ...manuals.filter(m => normalizeText(`${m.title} ${m.description} ${m.fileType}`).includes(q)).slice(0, 4).map(m => ({ type: "manual", id: m.id, label: m.title }))
     ];
-    box.innerHTML = items.length ? items.map(item => `<div class="suggest-item">${item.label} <span>${item.type}</span></div>`).join("") : `<div class="suggest-item">Không có kết quả</div>`;
+
+    box.innerHTML = items.length
+        ? items.map(item => `<div class="suggest-item" data-type="${item.type}" data-id="${item.id}">${item.label} <span>${item.type}</span></div>`).join("")
+        : `<div class="suggest-item" data-type="none" data-id="">Không có kết quả</div>`;
     box.style.display = "block";
 }
 
@@ -193,11 +256,11 @@ function renderProducts() {
     const status = $("#productStatusFilter")?.value || "all";
     const filtered = products.filter(p => {
         const text = normalizeText(`${p.name} ${p.brand} ${p.description}`);
-        const okQ = !q || text.includes(q);
-        const okCategory = category === "all" || String(p.categoryId || "") === category;
-        const okStatus = status === "all" || p.status === status;
-        return okQ && okCategory && okStatus;
+        return (!q || text.includes(q)) &&
+            (category === "all" || String(p.categoryId || "") === category) &&
+            (status === "all" || p.status === status);
     });
+
     $("#productGrid").innerHTML = filtered.map(p => `
         <div class="card clickable" onclick="openProductDetail('${p.id}')">
             <img src="${p.imageUrl || 'images/manual-01.jpg'}" alt="${p.name}">
@@ -205,10 +268,10 @@ function renderProducts() {
             <p>${p.brand || ""}</p>
             <p>${p.description || ""}</p>
             <div class="manual-info">
-                <span class="badge"><i class="fa-regular fa-file-lines"></i> ${(manuals.filter(m => String(m.productId) === String(p.id))).length} tài liệu</span>
+                <span class="badge"><i class="fa-regular fa-file-lines"></i> ${manuals.filter(m => String(m.productId) === String(p.id)).length} tài liệu</span>
             </div>
         </div>
-    `).join("");
+    `).join("") || `<div class="empty-state">Không có sản phẩm phù hợp.</div>`;
 }
 
 function renderProductDetail(productId) {
@@ -238,10 +301,9 @@ function renderDocuments() {
     const statusFilter = $("#docStatusFilter")?.value || "all";
     const filtered = manuals.filter(m => {
         const text = normalizeText(`${m.title} ${m.description} ${m.fileType} ${m.status} ${getProductName(m.productId)} ${getCategoryName(m.categoryId)}`);
-        const byKeyword = !keyword || text.includes(keyword);
-        const byCategory = filter === "all" || String(m.categoryId || "") === filter;
-        const byStatus = statusFilter === "all" || m.status === statusFilter;
-        return byKeyword && byCategory && byStatus;
+        return (!keyword || text.includes(keyword)) &&
+            (filter === "all" || String(m.categoryId || "") === filter) &&
+            (statusFilter === "all" || m.status === statusFilter);
     });
 
     $("#manualGrid").innerHTML = filtered.map(m => `
@@ -256,7 +318,7 @@ function renderDocuments() {
                 <span class="badge"><i class="fa-regular fa-bookmark"></i> ${isBookmarked(m.id) ? "Saved" : "Save"}</span>
             </div>
         </div>
-    `).join("");
+    `).join("") || `<div class="empty-state">Không tìm thấy tài liệu phù hợp.</div>`;
     $("#emptyState").style.display = filtered.length ? "none" : "block";
 }
 
@@ -282,10 +344,10 @@ function renderBookmarks() {
     const filtered = mine.filter(b => {
         const doc = manuals.find(m => String(m.id) === String(b.manualId));
         if (!doc) return false;
-        const okCat = qCat === "all" || String(doc.categoryId || "") === qCat;
-        const okStatus = qStatus === "all" || doc.status === qStatus;
-        return okCat && okStatus;
+        return (qCat === "all" || String(doc.categoryId || "") === qCat) &&
+            (qStatus === "all" || doc.status === qStatus);
     });
+
     $("#bookmarkGrid").innerHTML = filtered.length ? filtered.map(b => {
         const doc = manuals.find(m => String(m.id) === String(b.manualId));
         return `
@@ -334,17 +396,19 @@ function renderActivityLogs() {
         <div class="list-item">
             <span>
                 <strong>${l.action}</strong><br>
-                <small>${l.metadata ? JSON.stringify(l.metadata) : ""}</small>
+                <small>${safeJson(l.metadata)}</small>
             </span>
             <span>${new Date(l.createdAt || Date.now()).toLocaleString("vi-VN")}</span>
         </div>
     `).join("") : `<div class="empty-state">Không có lịch sử phù hợp.</div>`;
 }
 
-function renderAttachments() {
-    const manualId = $("#attachmentManualFilter")?.value || "";
-    const filtered = manualId ? attachments.filter(a => String(a.manualId) === String(manualId)) : attachments;
-    $("#attachmentManagerList").innerHTML = filtered.length ? filtered.map(a => `
+function renderAttachmentManager() {
+    const selectedManualId = $("#attachmentManualFilter")?.value || "";
+    const filtered = selectedManualId ? attachments.filter(a => String(a.manualId) === String(selectedManualId)) : attachments;
+    const target = $("#attachmentManagerList");
+    if (!target) return;
+    target.innerHTML = filtered.length ? filtered.map(a => `
         <div class="list-item">
             <span>
                 <strong>${a.name}</strong><br>
@@ -358,6 +422,21 @@ function renderAttachments() {
     `).join("") : `<div class="empty-state">Chưa có attachment.</div>`;
 }
 
+function renderManualAttachments(manualId) {
+    const detailTarget = $("#attachmentList");
+    if (!detailTarget) return;
+    const items = attachments.filter(a => String(a.manualId) === String(manualId));
+    detailTarget.innerHTML = items.length ? items.map(a => `
+        <div class="list-item">
+            <span>
+                <strong>${a.name}</strong><br>
+                <small>${a.fileType || ""}</small>
+            </span>
+            <a class="btn-secondary" href="${a.fileUrl}" target="_blank" rel="noopener">Mở file</a>
+        </div>
+    `).join("") : `<div class="empty-state">Chưa có file đính kèm.</div>`;
+}
+
 function getManualName(id) {
     return manuals.find(m => String(m.id) === String(id))?.title || "";
 }
@@ -365,10 +444,19 @@ function getManualName(id) {
 function renderNotifications() {
     $("#notificationList").innerHTML = notifications.length ? notifications.map(n => `
         <div class="card">
-            <h3>${n.text}</h3>
+            <h3>${n.text || n.title || "Thông báo"}</h3>
             <p>${n.seen ? "Đã đọc" : "Chưa đọc"}</p>
         </div>
     `).join("") : `<div class="empty-state">Không có thông báo.</div>`;
+}
+
+async function markAllNotificationsRead() {
+    const unread = notifications.filter(n => !n.seen);
+    if (!unread.length) return;
+    await Promise.all(unread.map(n => apiFetch(`/api/notifications/${n.id}/read`, { method: "PUT" }).catch(() => null)));
+    notifications = notifications.map(n => ({ ...n, seen: true }));
+    renderNotifications();
+    renderHome();
 }
 
 function renderProfile() {
@@ -402,7 +490,7 @@ function renderProfile() {
 }
 
 function renderAdmin() {
-    $("#totalUsers").textContent = 0;
+    $("#totalUsers").textContent = usersCount;
     $("#totalProducts").textContent = products.length;
     $("#totalDocs").textContent = manuals.length;
     $("#totalViews").textContent = manuals.reduce((s, m) => s + (m.viewCount || 0), 0);
@@ -416,14 +504,14 @@ function renderAdmin() {
             <span><strong>${c.name}</strong><br><small>${c.icon}</small></span>
             <button class="btn-secondary" onclick="deleteCategory('${c.id}')"><i class="fa-solid fa-trash"></i></button>
         </div>
-    `).join("");
+    `).join("") || `<div class="empty-state">Chưa có danh mục.</div>`;
 
     $("#adminProductList").innerHTML = products.map(p => `
         <div class="list-item">
             <span><strong>${p.name}</strong><br><small>${p.brand || ""}</small></span>
             <button class="btn-secondary" onclick="deleteProduct('${p.id}')"><i class="fa-solid fa-trash"></i></button>
         </div>
-    `).join("");
+    `).join("") || `<div class="empty-state">Chưa có sản phẩm.</div>`;
 
     $("#adminManualList").innerHTML = manuals.filter(m => m.status === "pending").map(m => `
         <div class="list-item">
@@ -433,28 +521,22 @@ function renderAdmin() {
                 <button class="btn-secondary" onclick="deleteManual('${m.id}')"><i class="fa-solid fa-trash"></i></button>
             </span>
         </div>
-    `).join("");
+    `).join("") || `<div class="empty-state">Không có tài liệu chờ duyệt.</div>`;
 }
 
-async function loadDataAndRender() {
-    await loadData();
-
+function syncFilters() {
     $("#docFilter").innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
     $("#bookmarkCategoryFilter").innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
     $("#productCategoryFilter").innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
     $("#docProduct").innerHTML = `<option value="">Chọn sản phẩm</option>` + products.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
     $("#docCategory").innerHTML = `<option value="">Chọn danh mục</option>` + categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
     $("#attachmentManualFilter").innerHTML = `<option value="">Tất cả tài liệu</option>` + manuals.map(m => `<option value="${m.id}">${m.title}</option>`).join("");
+}
 
-    renderHome();
-    renderProducts();
-    renderDocuments();
-    renderMyDocs();
-    renderBookmarks();
-    renderRatings();
-    renderActivityLogs();
-    renderAttachments();
-    renderNotifications();
+async function loadDataAndRender() {
+    await loadData();
+    syncFilters();
+    renderPage(state.currentPage);
     renderProfile();
     renderAdmin();
     updateAuthUI();
@@ -463,18 +545,7 @@ async function loadDataAndRender() {
     revealOnScroll();
 }
 
-async function openDetail(id) {
-    const doc = manuals.find(m => String(m.id) === String(id));
-    if (!doc) return;
-    $("#detailCategory").textContent = getCategoryName(doc.categoryId);
-    $("#detailName").textContent = doc.title;
-    $("#detailDesc").textContent = doc.description || "";
-    $("#detailViews").textContent = doc.viewCount || 0;
-    $("#detailDownloads").textContent = doc.downloadCount || 0;
-    $("#detailStatus").textContent = doc.status;
-    $("#detailDownloadBtn").onclick = () => downloadManual(id);
-    $("#previewFrame").src = doc.fileUrl || "about:blank";
-
+function ensureDetailBlocks() {
     if (!$("#detailMeta")) {
         const meta = document.createElement("div");
         meta.id = "detailMeta";
@@ -492,12 +563,6 @@ async function openDetail(id) {
         const box = document.createElement("div");
         box.id = "ratingBox";
         box.className = "manual-action";
-        box.innerHTML = `
-            <button class="btn-secondary" type="button" onclick="addRating('${id}', 5)">5★</button>
-            <button class="btn-secondary" type="button" onclick="addRating('${id}', 4)">4★</button>
-            <button class="btn-secondary" type="button" onclick="addRating('${id}', 3)">3★</button>
-            <button class="btn-secondary" type="button" onclick="toggleBookmark('${id}')">Bookmark</button>
-        `;
         $("#previewBox")?.before(box);
     }
 
@@ -508,7 +573,7 @@ async function openDetail(id) {
         section.innerHTML = `
             <div class="preview-header">
                 <h3>Attachments</h3>
-                <span class="badge">Giai đoạn 3</span>
+                <span class="badge">Files</span>
             </div>
             <div id="attachmentList" class="list-box"></div>
         `;
@@ -528,17 +593,42 @@ async function openDetail(id) {
         `;
         $("#attachmentSection")?.after(section);
     }
+}
 
-    renderAttachments(id);
+async function openDetail(id) {
+    const doc = manuals.find(m => String(m.id) === String(id));
+    if (!doc) return;
+
+    ensureDetailBlocks();
+    $("#detailCategory").textContent = getCategoryName(doc.categoryId);
+    $("#detailName").textContent = doc.title;
+    $("#detailDesc").textContent = doc.description || "";
+    $("#detailViews").textContent = doc.viewCount || 0;
+    $("#detailDownloads").textContent = doc.downloadCount || 0;
+    $("#detailStatus").textContent = doc.status;
+    $("#detailDownloadBtn").onclick = () => downloadManual(id);
+    $("#previewFrame").src = doc.fileUrl || "about:blank";
+
+    $("#ratingBox").innerHTML = `
+        <button class="btn-secondary" type="button" onclick="addRating('${id}', 5)">5★</button>
+        <button class="btn-secondary" type="button" onclick="addRating('${id}', 4)">4★</button>
+        <button class="btn-secondary" type="button" onclick="addRating('${id}', 3)">3★</button>
+        <button class="btn-secondary" type="button" onclick="toggleBookmark('${id}')">Bookmark</button>
+    `;
+
+    renderManualAttachments(id);
     renderManualInsights(id);
     renderManualLogs(id);
     showPage("manual");
+
     await apiFetch(`/api/manuals/${id}`, { method: "GET" });
     await apiFetch(`/api/manuals/${id}/counter`, { method: "PATCH", body: JSON.stringify({ field: "view" }) });
     await apiFetch("/api/activity-logs", {
         method: "POST",
         body: JSON.stringify({ action: "view_manual", manualId: id, userId: state.user?.id || null })
     });
+
+    await loadDataAndRender();
 }
 
 function renderManualLogs(manualId) {
@@ -551,7 +641,9 @@ function renderManualLogs(manualId) {
     `).join("") : `<div class="empty-state">Chưa có logs.</div>`;
 }
 
-async function openProductDetail(id) { renderProductDetail(id); }
+async function openProductDetail(id) {
+    renderProductDetail(id);
+}
 
 async function downloadManual(id) {
     const doc = manuals.find(m => String(m.id) === String(id));
@@ -585,7 +677,7 @@ async function toggleBookmark(id) {
     }
     await apiFetch("/api/activity-logs", {
         method: "POST",
-        body: JSON.stringify({ action: "toggle_bookmark", manualId: id, userId: state.user.id })
+        body: JSON.stringify({ action: "toggle_bookmark", manualId: id, userId: state.user.id, metadata: { bookmarked: !exists } })
     });
     await loadDataAndRender();
 }
@@ -642,7 +734,7 @@ async function addProduct() {
 async function approveManual(id) {
     const doc = manuals.find(m => String(m.id) === String(id));
     if (!doc) return;
-    const res = await apiFetch(`/api/manuals/${id}`, { method: "PUT", body: JSON.stringify({ ...doc, status: "approved" }) });
+    const res = await apiFetch(`/api/manuals/${id}`, { method: "PATCH", body: JSON.stringify({ status: "approved" }) });
     if (res?.success) await loadDataAndRender();
 }
 
@@ -711,7 +803,9 @@ function renderManualInsights(manualId) {
 }
 
 function revealOnScroll() {
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add("show"); }), { threshold: 0.08 });
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add("show");
+    }), { threshold: 0.08 });
     $$(".reveal").forEach(el => observer.observe(el));
 }
 
@@ -741,12 +835,29 @@ window.toggleDrawer = function (open) {
 };
 
 $("#themeBtn")?.addEventListener("click", () => { state.theme = !state.theme; applyTheme(); });
-$("#logoutBtn")?.addEventListener("click", () => { saveUser(null); showToast("Đã đăng xuất."); showPage("home"); });
+$("#logoutBtn")?.addEventListener("click", () => { saveAuth({ user: null, token: "" }); showToast("Đã đăng xuất."); showPage("home"); });
 $("#notifyBtn")?.addEventListener("click", () => showPage("notifications"));
 
-$("#heroSearchBtn")?.addEventListener("click", () => { state.search = $("#heroSearch")?.value.trim() || ""; renderDocuments(); renderProducts(); renderSearchSuggest(); showPage("documents"); });
-$("#globalSearch")?.addEventListener("input", e => { state.search = e.target.value.trim(); renderSearchSuggest(); });
-$("#globalSearch")?.addEventListener("keydown", e => { if (e.key === "Enter") { renderDocuments(); renderProducts(); showPage("documents"); } });
+$("#heroSearchBtn")?.addEventListener("click", () => {
+    state.search = $("#heroSearch")?.value.trim() || "";
+    renderDocuments();
+    renderProducts();
+    renderSearchSuggest();
+    showPage("documents");
+});
+
+$("#globalSearch")?.addEventListener("input", e => {
+    state.search = e.target.value.trim();
+    renderSearchSuggest();
+});
+
+$("#globalSearch")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+        renderDocuments();
+        renderProducts();
+        showPage("documents");
+    }
+});
 
 $("#productSearch")?.addEventListener("input", renderProducts);
 $("#productCategoryFilter")?.addEventListener("change", renderProducts);
@@ -758,7 +869,7 @@ $("#bookmarkCategoryFilter")?.addEventListener("change", renderBookmarks);
 $("#bookmarkStatusFilter")?.addEventListener("change", renderBookmarks);
 $("#activityDateFilter")?.addEventListener("change", renderActivityLogs);
 $("#activityTypeFilter")?.addEventListener("change", renderActivityLogs);
-$("#attachmentManualFilter")?.addEventListener("change", renderAttachments);
+$("#attachmentManualFilter")?.addEventListener("change", renderAttachmentManager);
 
 $("#emailAuthForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -766,13 +877,13 @@ $("#emailAuthForm")?.addEventListener("submit", async (e) => {
     const password = $("#authPassword")?.value.trim();
     const loginRes = await apiFetch("/api/login", { method: "POST", body: JSON.stringify({ email, password }) });
     if (loginRes?.success) {
-        saveUser(loginRes.user);
+        saveAuth(loginRes);
         showToast("Đăng nhập thành công.");
         showPage("home");
     } else {
         const registerRes = await apiFetch("/api/register", { method: "POST", body: JSON.stringify({ email, password, authType: "email" }) });
         if (registerRes?.success) {
-            saveUser(registerRes.user);
+            saveAuth(registerRes);
             showToast("Đăng ký thành công.");
             showPage("home");
         } else showToast(registerRes?.message || loginRes?.message || "Lỗi đăng nhập.");
@@ -788,6 +899,7 @@ $("#uploadForm")?.addEventListener("submit", async (e) => {
     const file = $("#docFile")?.files?.[0];
     const description = $("#docDescription")?.value.trim();
     if (!title || !file) return showToast("Thiếu tiêu đề hoặc file.");
+
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     let binary = "";
@@ -795,7 +907,10 @@ $("#uploadForm")?.addEventListener("submit", async (e) => {
     for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
     const fileBase64 = btoa(binary);
 
-    const uploadRes = await apiFetch("/api/upload", { method: "POST", body: JSON.stringify({ fileName: file.name, fileBase64, mimeType: file.type, bucket: "manuals" }) });
+    const uploadRes = await apiFetch("/api/upload", {
+        method: "POST",
+        body: JSON.stringify({ fileName: file.name, fileBase64, mimeType: file.type, bucket: "manuals" })
+    });
     if (!uploadRes?.success) return showToast(uploadRes?.message || "Upload thất bại.");
 
     const res = await apiFetch("/api/manuals", {
@@ -805,6 +920,7 @@ $("#uploadForm")?.addEventListener("submit", async (e) => {
             status: isAdmin() ? "approved" : "pending", description, uploadedBy: state.user.id, allowDownload: true
         })
     });
+
     if (res?.success) {
         await apiFetch("/api/activity-logs", {
             method: "POST",
@@ -819,10 +935,16 @@ $("#uploadForm")?.addEventListener("submit", async (e) => {
 $("#searchSuggest")?.addEventListener("click", e => {
     const item = e.target.closest(".suggest-item");
     if (!item) return;
-    state.search = item.textContent.replace("product", "").replace("manual", "").trim();
-    $("#globalSearch").value = state.search;
-    renderDocuments();
-    renderProducts();
+    const type = item.dataset.type;
+    const id = item.dataset.id;
+    if (type === "product") openProductDetail(id);
+    else if (type === "manual") openDetail(id);
+    else {
+        state.search = item.textContent.trim();
+        $("#globalSearch").value = state.search;
+        renderDocuments();
+        renderProducts();
+    }
     $("#searchSuggest").style.display = "none";
 });
 
@@ -832,7 +954,9 @@ document.addEventListener("click", e => {
         if (box) box.style.display = "none";
     }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") window.toggleDrawer(false); });
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") window.toggleDrawer(false);
+});
 
 window.addEventListener("load", async () => {
     const loading = $("#loading");

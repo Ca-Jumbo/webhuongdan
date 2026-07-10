@@ -34,6 +34,24 @@ function createToken(user) {
     return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 }
 
+function authRequired(req, res, next) {
+    const token = (req.headers.authorization || "").replace("Bearer ", "");
+    if (!token) return res.status(401).json({ success: false, message: "Thiếu token." });
+    try {
+        req.auth = jwt.verify(token, JWT_SECRET);
+        next();
+    } catch {
+        return res.status(401).json({ success: false, message: "Token không hợp lệ." });
+    }
+}
+
+function adminOnly(req, res, next) {
+    if (!req.auth || !["super_admin", "admin", "editor"].includes(req.auth.role)) {
+        return res.status(403).json({ success: false, message: "Không có quyền." });
+    }
+    next();
+}
+
 function normalizeUser(row) {
     return {
         id: row.id,
@@ -43,70 +61,29 @@ function normalizeUser(row) {
         authType: row.auth_type || "email"
     };
 }
-
-function normalizeCategory(row) {
-    return {
-        id: row.id,
-        name: row.name,
-        icon: row.icon || "fa-solid fa-folder",
-        parentId: row.parent_id || null
-    };
-}
-
-function normalizeProduct(row) {
-    return {
-        id: row.id,
-        name: row.name,
-        brand: row.brand || "",
-        categoryId: row.category_id || null,
-        description: row.description || "",
-        imageUrl: row.image_url || "",
-        status: row.status || "active",
-        viewCount: row.view_count || 0,
-        createdAt: row.created_at
-    };
-}
-
-function normalizeManual(row) {
-    return {
-        id: row.id,
-        title: row.title,
-        productId: row.product_id || null,
-        categoryId: row.category_id || null,
-        fileUrl: row.file_url || "",
-        thumbnailUrl: row.thumbnail_url || "",
-        fileSize: row.file_size || 0,
-        fileType: row.file_type || "",
-        allowDownload: row.allow_download ?? true,
-        status: row.status || "pending",
-        description: row.description || "",
-        uploadedBy: row.uploaded_by || null,
-        viewCount: row.view_count || 0,
-        downloadCount: row.download_count || 0,
-        createdAt: row.created_at
-    };
-}
-
-function normalizeBookmark(row) {
-    return { id: row.id, manualId: row.manual_id, userId: row.user_id, createdAt: row.created_at };
-}
-
-function normalizeRating(row) {
-    return { id: row.id, manualId: row.manual_id, userId: row.user_id, value: row.value, createdAt: row.created_at };
-}
-
-function normalizeAttachment(row) {
-    return { id: row.id, manualId: row.manual_id, name: row.name, fileUrl: row.file_url, fileType: row.file_type || "", createdAt: row.created_at };
+function normalizeCategory(row) { return { id: row.id, name: row.name, icon: row.icon || "fa-solid fa-folder", parentId: row.parent_id || null }; }
+function normalizeProduct(row) { return { id: row.id, name: row.name, brand: row.brand || "", categoryId: row.category_id || null, description: row.description || "", imageUrl: row.image_url || "", status: row.status || "active", viewCount: row.view_count || 0, createdAt: row.created_at }; }
+function normalizeManual(row) { return { id: row.id, title: row.title, productId: row.product_id || null, categoryId: row.category_id || null, fileUrl: row.file_url || "", thumbnailUrl: row.thumbnail_url || "", fileSize: row.file_size || 0, fileType: row.file_type || "", allowDownload: row.allow_download ?? true, status: row.status || "pending", description: row.description || "", uploadedBy: row.uploaded_by || null, viewCount: row.view_count || 0, downloadCount: row.download_count || 0, createdAt: row.created_at }; }
+function normalizeBookmark(row) { return { id: row.id, manualId: row.manual_id, userId: row.user_id, createdAt: row.created_at }; }
+function normalizeRating(row) { return { id: row.id, manualId: row.manual_id, userId: row.user_id, value: row.value, createdAt: row.created_at }; }
+function normalizeAttachment(row) { return { id: row.id, manualId: row.manual_id, name: row.name, fileUrl: row.file_url, fileType: row.file_type || "", createdAt: row.created_at }; }
+function normalizeNotification(row) { return { id: row.id, userId: row.user_id, title: row.title || "", text: row.text || row.message || "", seen: !!(row.seen || row.is_read), createdAt: row.created_at }; }
+function normalizeActivityLog(row) {
+    let metadata = row.metadata;
+    if (typeof metadata === "string") {
+        try { metadata = JSON.parse(metadata); } catch { metadata = metadata; }
+    }
+    return { id: row.id, userId: row.user_id, action: row.action, tableName: row.table_name, manualId: row.manual_id, recordId: row.record_id, metadata, createdAt: row.created_at };
 }
 
 async function seedAdmin() {
     if (!dbReady) return;
-    const email = "admin@gmail.com";
+    const email = "admin@example.com";
     const password = "admin123";
     const { data: existed } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
     if (existed) return;
     const passwordHash = await bcrypt.hash(password, 10);
-    await supabase.from("users").insert({ email, password_hash: passwordHash, role: "admin", auth_type: "email" });
+    await supabase.from("users").insert({ email, password_hash: passwordHash, role: "super_admin", auth_type: "email", full_name: "Administrator", is_active: true });
 }
 
 app.get("/api/health", (req, res) => res.json({ success: true, dbReady }));
@@ -161,6 +138,13 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
+app.get("/api/users-count", authRequired, adminOnly, async (req, res) => {
+    if (!requireDB(res)) return;
+    const { count, error } = await supabase.from("users").select("*", { count: "exact", head: true });
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, count: count || 0 });
+});
+
 app.get("/api/categories", async (req, res) => {
     if (!requireDB(res)) return;
     try {
@@ -172,7 +156,7 @@ app.get("/api/categories", async (req, res) => {
     }
 });
 
-app.post("/api/categories", async (req, res) => {
+app.post("/api/categories", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { name, icon, parentId = null } = req.body;
@@ -185,7 +169,7 @@ app.post("/api/categories", async (req, res) => {
     }
 });
 
-app.delete("/api/categories/:id", async (req, res) => {
+app.delete("/api/categories/:id", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { error } = await supabase.from("categories").delete().eq("id", req.params.id);
@@ -207,7 +191,7 @@ app.get("/api/products", async (req, res) => {
     }
 });
 
-app.post("/api/products", async (req, res) => {
+app.post("/api/products", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { data, error } = await supabase.from("products").insert({
@@ -225,7 +209,7 @@ app.post("/api/products", async (req, res) => {
     }
 });
 
-app.delete("/api/products/:id", async (req, res) => {
+app.delete("/api/products/:id", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { error } = await supabase.from("products").delete().eq("id", req.params.id);
@@ -259,7 +243,7 @@ app.get("/api/manuals/:id", async (req, res) => {
     }
 });
 
-app.post("/api/manuals", async (req, res) => {
+app.post("/api/manuals", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { data, error } = await supabase.from("manuals").insert({
@@ -273,7 +257,7 @@ app.post("/api/manuals", async (req, res) => {
             allow_download: req.body.allowDownload ?? true,
             status: req.body.status || "pending",
             description: req.body.description || "",
-            uploaded_by: req.body.uploadedBy || null
+            uploaded_by: req.auth.id
         }).select("*").single();
         if (error) throw error;
         res.json({ success: true, data: normalizeManual(data) });
@@ -282,22 +266,28 @@ app.post("/api/manuals", async (req, res) => {
     }
 });
 
-app.put("/api/manuals/:id", async (req, res) => {
+app.patch("/api/manuals/:id", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { data, error } = await supabase.from("manuals").update({
-            title: req.body.title,
-            product_id: req.body.productId || null,
-            category_id: req.body.categoryId || null,
-            file_url: req.body.fileUrl,
-            thumbnail_url: req.body.thumbnailUrl,
-            file_size: req.body.fileSize,
-            file_type: req.body.fileType,
-            allow_download: req.body.allowDownload,
-            status: req.body.status,
-            description: req.body.description,
-            uploaded_by: req.body.uploadedBy || null
-        }).eq("id", req.params.id).select("*").single();
+        const patch = {};
+        ["title","productId","categoryId","fileUrl","thumbnailUrl","fileSize","fileType","allowDownload","status","description"].forEach(k => {
+            if (req.body[k] !== undefined) patch[k] = req.body[k];
+        });
+
+        const dataPatch = {
+            ...(patch.title !== undefined ? { title: patch.title } : {}),
+            ...(patch.productId !== undefined ? { product_id: patch.productId } : {}),
+            ...(patch.categoryId !== undefined ? { category_id: patch.categoryId } : {}),
+            ...(patch.fileUrl !== undefined ? { file_url: patch.fileUrl } : {}),
+            ...(patch.thumbnailUrl !== undefined ? { thumbnail_url: patch.thumbnailUrl } : {}),
+            ...(patch.fileSize !== undefined ? { file_size: patch.fileSize } : {}),
+            ...(patch.fileType !== undefined ? { file_type: patch.fileType } : {}),
+            ...(patch.allowDownload !== undefined ? { allow_download: patch.allowDownload } : {}),
+            ...(patch.status !== undefined ? { status: patch.status } : {}),
+            ...(patch.description !== undefined ? { description: patch.description } : {})
+        };
+
+        const { data, error } = await supabase.from("manuals").update(dataPatch).eq("id", req.params.id).select("*").single();
         if (error) throw error;
         res.json({ success: true, data: normalizeManual(data) });
     } catch (err) {
@@ -305,7 +295,7 @@ app.put("/api/manuals/:id", async (req, res) => {
     }
 });
 
-app.patch("/api/manuals/:id/approve", async (req, res) => {
+app.patch("/api/manuals/:id/approve", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { data, error } = await supabase.from("manuals").update({ status: "approved" }).eq("id", req.params.id).select("*").single();
@@ -316,7 +306,7 @@ app.patch("/api/manuals/:id/approve", async (req, res) => {
     }
 });
 
-app.delete("/api/manuals/:id", async (req, res) => {
+app.delete("/api/manuals/:id", authRequired, adminOnly, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { error } = await supabase.from("manuals").delete().eq("id", req.params.id);
@@ -333,7 +323,6 @@ app.patch("/api/manuals/:id/counter", async (req, res) => {
         const field = req.body.field === "download" ? "download_count" : "view_count";
         const { data: current } = await supabase.from("manuals").select("*").eq("id", req.params.id).maybeSingle();
         if (!current) return res.status(404).json({ success: false, message: "Không tìm thấy tài liệu" });
-
         const nextValue = (current[field] || 0) + 1;
         const { data, error } = await supabase.from("manuals").update({ [field]: nextValue }).eq("id", req.params.id).select("*").single();
         if (error) throw error;
@@ -343,12 +332,11 @@ app.patch("/api/manuals/:id/counter", async (req, res) => {
     }
 });
 
-app.post("/api/upload", async (req, res) => {
+app.post("/api/upload", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { fileName, fileBase64, mimeType, bucket = "manuals" } = req.body;
         if (!fileName || !fileBase64) return res.status(400).json({ success: false, message: "Thiếu file upload." });
-
         const buffer = Buffer.from(fileBase64, "base64");
         const safeName = `${Date.now()}-${fileName}`.replace(/[^a-zA-Z0-9._-]/g, "_");
         const filePath = `uploads/${safeName}`;
@@ -357,61 +345,46 @@ app.post("/api/upload", async (req, res) => {
             contentType: mimeType || "application/octet-stream",
             upsert: false
         });
-
         if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-        res.json({ success: true, fileUrl: data.publicUrl, path: filePath, bucket });
+        const { data: signed, error: signError } = await supabase.storage.from(bucket).createSignedUrl(filePath, 60 * 60 * 24);
+        if (signError) throw signError;
+
+        res.json({ success: true, fileUrl: signed.signedUrl, path: filePath, bucket, signed: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.get("/api/notifications", async (req, res) => {
+app.get("/api/notifications", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { data, error } = await supabase.from("notifications").select("*").order("created_at", { ascending: false });
+        const query = supabase.from("notifications").select("*").order("created_at", { ascending: false });
+        const { data, error } = req.auth.role === "super_admin" || req.auth.role === "admin"
+            ? await query
+            : await query.eq("user_id", req.auth.id);
         if (error) throw error;
-        res.json({ success: true, data });
+        res.json({ success: true, data: (data || []).map(normalizeNotification) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.post("/api/notifications", async (req, res) => {
+app.put("/api/notifications/:id/read", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { userId = null, text } = req.body;
-        if (!text) return res.status(400).json({ success: false, message: "Thiếu nội dung thông báo" });
-
-        const { data, error } = await supabase.from("notifications").insert({
-            user_id: userId,
-            text,
-            seen: false
-        }).select("*").single();
-
+        const { data, error } = await supabase.from("notifications").update({ seen: true, is_read: true }).eq("id", req.params.id).select("*").single();
         if (error) throw error;
-        res.json({ success: true, data });
+        res.json({ success: true, data: normalizeNotification(data) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.put("/api/notifications/:id/read", async (req, res) => {
+app.get("/api/bookmarks", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { data, error } = await supabase.from("notifications").update({ seen: true }).eq("id", req.params.id).select("*").single();
-        if (error) throw error;
-        res.json({ success: true, data });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-app.get("/api/bookmarks", async (req, res) => {
-    if (!requireDB(res)) return;
-    try {
-        const { data, error } = await supabase.from("bookmarks").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("bookmarks").select("*").eq("user_id", req.auth.id).order("created_at", { ascending: false });
         if (error) throw error;
         res.json({ success: true, data: (data || []).map(normalizeBookmark) });
     } catch (err) {
@@ -419,12 +392,12 @@ app.get("/api/bookmarks", async (req, res) => {
     }
 });
 
-app.post("/api/bookmarks", async (req, res) => {
+app.post("/api/bookmarks", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { manualId, userId } = req.body;
-        if (!manualId || !userId) return res.status(400).json({ success: false, message: "Thiếu dữ liệu bookmark" });
-        const { data, error } = await supabase.from("bookmarks").insert({ manual_id: manualId, user_id: userId }).select("*").single();
+        const { manualId } = req.body;
+        if (!manualId) return res.status(400).json({ success: false, message: "Thiếu dữ liệu bookmark" });
+        const { data, error } = await supabase.from("bookmarks").insert({ manual_id: manualId, user_id: req.auth.id }).select("*").single();
         if (error) throw error;
         res.json({ success: true, data: normalizeBookmark(data) });
     } catch (err) {
@@ -432,10 +405,10 @@ app.post("/api/bookmarks", async (req, res) => {
     }
 });
 
-app.delete("/api/bookmarks/:id", async (req, res) => {
+app.delete("/api/bookmarks/:id", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { error } = await supabase.from("bookmarks").delete().eq("id", req.params.id);
+        const { error } = await supabase.from("bookmarks").delete().eq("id", req.params.id).eq("user_id", req.auth.id);
         if (error) throw error;
         res.json({ success: true });
     } catch (err) {
@@ -443,10 +416,10 @@ app.delete("/api/bookmarks/:id", async (req, res) => {
     }
 });
 
-app.get("/api/ratings", async (req, res) => {
+app.get("/api/ratings", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { data, error } = await supabase.from("ratings").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("ratings").select("*").eq("user_id", req.auth.id).order("created_at", { ascending: false });
         if (error) throw error;
         res.json({ success: true, data: (data || []).map(normalizeRating) });
     } catch (err) {
@@ -454,12 +427,12 @@ app.get("/api/ratings", async (req, res) => {
     }
 });
 
-app.post("/api/ratings", async (req, res) => {
+app.post("/api/ratings", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { manualId, userId, value } = req.body;
-        if (!manualId || !userId || !value) return res.status(400).json({ success: false, message: "Thiếu dữ liệu đánh giá" });
-        const { data, error } = await supabase.from("ratings").insert({ manual_id: manualId, user_id: userId, value }).select("*").single();
+        const { manualId, value } = req.body;
+        if (!manualId || !value) return res.status(400).json({ success: false, message: "Thiếu dữ liệu đánh giá" });
+        const { data, error } = await supabase.from("ratings").upsert({ manual_id: manualId, user_id: req.auth.id, value }, { onConflict: "manual_id,user_id" }).select("*").single();
         if (error) throw error;
         res.json({ success: true, data: normalizeRating(data) });
     } catch (err) {
@@ -467,12 +440,12 @@ app.post("/api/ratings", async (req, res) => {
     }
 });
 
-app.patch("/api/ratings/:id", async (req, res) => {
+app.put("/api/ratings/:id", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { value } = req.body;
         if (!value) return res.status(400).json({ success: false, message: "Thiếu value" });
-        const { data, error } = await supabase.from("ratings").update({ value }).eq("id", req.params.id).select("*").single();
+        const { data, error } = await supabase.from("ratings").update({ value }).eq("id", req.params.id).eq("user_id", req.auth.id).select("*").single();
         if (error) throw error;
         res.json({ success: true, data: normalizeRating(data) });
     } catch (err) {
@@ -480,10 +453,10 @@ app.patch("/api/ratings/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/ratings/:id", async (req, res) => {
+app.delete("/api/ratings/:id", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { error } = await supabase.from("ratings").delete().eq("id", req.params.id);
+        const { error } = await supabase.from("ratings").delete().eq("id", req.params.id).eq("user_id", req.auth.id);
         if (error) throw error;
         res.json({ success: true });
     } catch (err) {
@@ -491,7 +464,7 @@ app.delete("/api/ratings/:id", async (req, res) => {
     }
 });
 
-app.get("/api/attachments", async (req, res) => {
+app.get("/api/attachments", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { data, error } = await supabase.from("attachments").select("*").order("created_at", { ascending: false });
@@ -502,7 +475,7 @@ app.get("/api/attachments", async (req, res) => {
     }
 });
 
-app.post("/api/attachments", async (req, res) => {
+app.post("/api/attachments", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { manualId, name, fileUrl, fileType } = req.body;
@@ -515,7 +488,7 @@ app.post("/api/attachments", async (req, res) => {
     }
 });
 
-app.patch("/api/attachments/:id", async (req, res) => {
+app.patch("/api/attachments/:id", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const patch = {};
@@ -530,7 +503,7 @@ app.patch("/api/attachments/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/attachments/:id", async (req, res) => {
+app.delete("/api/attachments/:id", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { error } = await supabase.from("attachments").delete().eq("id", req.params.id);
@@ -541,39 +514,39 @@ app.delete("/api/attachments/:id", async (req, res) => {
     }
 });
 
-app.get("/api/activity-logs", async (req, res) => {
+app.get("/api/activity-logs", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
         const { data, error } = await supabase.from("activity_logs").select("*").order("created_at", { ascending: false });
         if (error) throw error;
-        res.json({ success: true, data });
+        res.json({ success: true, data: (data || []).map(normalizeActivityLog) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.post("/api/activity-logs", async (req, res) => {
+app.post("/api/activity-logs", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { action, manualId = null, userId = null, metadata = null } = req.body;
+        const { action, manualId = null, metadata = null } = req.body;
         if (!action) return res.status(400).json({ success: false, message: "Thiếu action" });
         const { data, error } = await supabase.from("activity_logs").insert({
             action,
             manual_id: manualId,
-            user_id: userId,
-            metadata: metadata ? JSON.stringify(metadata) : null
+            user_id: req.auth.id,
+            metadata: metadata || {}
         }).select("*").single();
         if (error) throw error;
-        res.json({ success: true, data });
+        res.json({ success: true, data: normalizeActivityLog(data) });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-app.get("/api/download-logs", async (req, res) => {
+app.get("/api/download-logs", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { data, error } = await supabase.from("download_logs").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("download_logs").select("*").eq("user_id", req.auth.id).order("created_at", { ascending: false });
         if (error) throw error;
         res.json({ success: true, data });
     } catch (err) {
@@ -581,13 +554,13 @@ app.get("/api/download-logs", async (req, res) => {
     }
 });
 
-app.post("/api/download-logs", async (req, res) => {
+app.post("/api/download-logs", authRequired, async (req, res) => {
     if (!requireDB(res)) return;
     try {
-        const { manualId = null, userId = null, fileUrl = "" } = req.body;
+        const { manualId = null, fileUrl = "" } = req.body;
         const { data, error } = await supabase.from("download_logs").insert({
             manual_id: manualId,
-            user_id: userId,
+            user_id: req.auth.id,
             file_url: fileUrl
         }).select("*").single();
         if (error) throw error;
@@ -595,6 +568,14 @@ app.post("/api/download-logs", async (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
+});
+
+app.get("/api/me", authRequired, async (req, res) => {
+    if (!requireDB(res)) return;
+    const { data, error } = await supabase.from("users").select("*").eq("id", req.auth.id).maybeSingle();
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    if (!data) return res.status(404).json({ success: false, message: "Không tìm thấy user." });
+    res.json({ success: true, user: normalizeUser(data) });
 });
 
 (async () => {
