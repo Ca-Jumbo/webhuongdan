@@ -51,7 +51,7 @@
         <li class="active" onclick="showPage('home')"><i class="fa-solid fa-house"></i> Trang chủ</li>
         <li onclick="showPage('categories')"><i class="fa-solid fa-folder-open"></i> Danh mục</li>
         <li onclick="showPage('products')"><i class="fa-solid fa-box"></i> Sản phẩm</li>
-        <li onclick="showPage('documents')"><i class="fa-solid fa-folder-open"></i> Trung tâm tài liệu</li>
+        <li onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i> Trung tâm tài liệu</li>
         <li onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i> Thông báo</li>
         <li onclick="showPage('profile')"><i class="fa-solid fa-user"></i> Tài khoản</li>
         <li onclick="openAdmin()"><i class="fa-solid fa-lock"></i> Quản trị</li>
@@ -111,7 +111,17 @@
                 <span class="section-kicker">Danh mục</span>
                 <h2>Danh mục sản phẩm</h2>
             </div>
-            <p>Khách hàng có thể xem danh mục, sản phẩm thuộc danh mục đó.</p>
+            <p>Khách hàng có thể lọc theo danh mục hoặc xem sản phẩm / tài liệu thuộc danh mục đó.</p>
+        </div>
+        <div class="toolbar">
+            <label class="badge" style="justify-content:flex-start;">
+                <input id="categoryModeProduct" type="checkbox" checked>
+                <span style="margin-left:8px;">Có sản phẩm</span>
+            </label>
+            <label class="badge" style="justify-content:flex-start;">
+                <input id="categoryModeManual" type="checkbox" checked>
+                <span style="margin-left:8px;">Có tài liệu</span>
+            </label>
         </div>
         <div id="categoryGrid" class="card-grid"></div>
     </section>
@@ -190,7 +200,6 @@
                     <button class="btn-secondary" type="button" onclick="showPage('documents')">Quay lại</button>
                 </div>
             </div>
-
             <div class="content-grid">
                 <div class="preview-box" id="previewBox">
                     <div class="preview-header">
@@ -277,9 +286,11 @@
                 <h3>Danh mục</h3>
                 <div class="admin-form-row">
                     <input id="newCategoryName" placeholder="Tên danh mục">
-                    <input id="newCategoryIcon" placeholder="fa-solid fa-folder">
+                    <button class="btn-secondary" type="button" onclick="pickCategoryIcon()">Chọn icon từ máy</button>
                     <button class="btn-primary" type="button" onclick="openCategoryModal()">Thêm</button>
                 </div>
+                <input id="newCategoryIcon" type="hidden">
+                <div id="categoryIconPreview" class="file-preview"></div>
                 <div id="adminCategoryList"></div>
             </div>
 
@@ -287,9 +298,11 @@
                 <h3>Thương hiệu</h3>
                 <div class="admin-form-row">
                     <input id="newBrandName" placeholder="Tên thương hiệu">
-                    <input id="newBrandLogo" placeholder="Logo / icon URL">
+                    <button class="btn-secondary" type="button" onclick="pickBrandLogo()">Chọn logo từ máy</button>
                     <button class="btn-primary" type="button" onclick="openBrandModal()">Thêm</button>
                 </div>
+                <input id="newBrandLogo" type="hidden">
+                <div id="brandLogoPreview" class="file-preview"></div>
                 <div id="adminBrandList"></div>
             </div>
 
@@ -300,13 +313,31 @@
                     <select id="newProductBrand"></select>
                     <select id="newProductCategory"></select>
                 </div>
-                <button class="btn-primary" type="button" onclick="openProductModal()">Thêm sản phẩm</button>
+                <div class="admin-form-row">
+                    <button class="btn-secondary" type="button" onclick="pickProductImage()">Chọn hình ảnh từ máy</button>
+                    <button class="btn-primary" type="button" onclick="openProductModal()">Thêm sản phẩm</button>
+                </div>
+                <input id="newProductImage" type="hidden">
+                <div id="productImagePreview" class="file-preview"></div>
                 <div id="adminProductList" style="margin-top:14px;"></div>
             </div>
 
             <div class="panel-card reveal">
                 <h3>Tài liệu chờ duyệt</h3>
                 <div id="adminManualList"></div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Quản trị nhanh</h3>
+                <div class="admin-shortcuts">
+                    <button class="btn-secondary" type="button" onclick="exportAllData()">Xuất dữ liệu</button>
+                    <label class="btn-secondary file-btn">
+                        Nhập dữ liệu
+                        <input id="importJsonInput" type="file" accept=".json" onchange="handleImportJson(this.files[0])">
+                    </label>
+                    <button class="btn-secondary" type="button" onclick="showPage('categories')">Xem danh mục</button>
+                    <button class="btn-secondary" type="button" onclick="showPage('products')">Xem sản phẩm</button>
+                </div>
             </div>
         </div>
     </section>
