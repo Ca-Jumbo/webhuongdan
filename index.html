@@ -19,6 +19,9 @@
 </div>
 <div class="toast"><span></span></div>
 
+<div id="modalOverlay" class="modal-overlay" onclick="closeModal()"></div>
+<div id="modalBox" class="modal-box" aria-hidden="true"></div>
+
 <header class="topbar">
     <div class="logo" onclick="showPage('home')">
         <div class="logo-icon"><i class="fa-solid fa-book-open"></i></div>
@@ -30,7 +33,7 @@
 
     <div class="search-box" id="headerSearch">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input id="globalSearch" type="text" placeholder="Tìm sản phẩm, tài liệu, danh mục...">
+        <input id="globalSearch" type="text" placeholder="Tìm sản phẩm, tài liệu...">
         <div id="searchSuggest" class="search-suggest"></div>
     </div>
 
@@ -46,14 +49,9 @@
     <div class="sidebar-title">Điều hướng</div>
     <ul>
         <li class="active" onclick="showPage('home')"><i class="fa-solid fa-house"></i> Trang chủ</li>
+        <li onclick="showPage('categories')"><i class="fa-solid fa-folder-open"></i> Danh mục</li>
         <li onclick="showPage('products')"><i class="fa-solid fa-box"></i> Sản phẩm</li>
         <li onclick="showPage('documents')"><i class="fa-solid fa-folder-open"></i> Trung tâm tài liệu</li>
-        <li onclick="showPage('myDocs')"><i class="fa-solid fa-layer-group"></i> Tài liệu của tôi</li>
-        <li onclick="showPage('myBookmarks')"><i class="fa-solid fa-bookmark"></i> Bookmark của tôi</li>
-        <li onclick="showPage('myRatings')"><i class="fa-solid fa-star"></i> Đánh giá của tôi</li>
-        <li onclick="showPage('activityLogPage')"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử hoạt động</li>
-        <li onclick="showPage('attachmentsManager')"><i class="fa-solid fa-paperclip"></i> Attachment manager</li>
-        <li onclick="showPage('upload')"><i class="fa-solid fa-upload"></i> Upload tài liệu</li>
         <li onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i> Thông báo</li>
         <li onclick="showPage('profile')"><i class="fa-solid fa-user"></i> Tài khoản</li>
         <li onclick="openAdmin()"><i class="fa-solid fa-lock"></i> Quản trị</li>
@@ -65,23 +63,23 @@
         <div class="hero-copy">
             <span class="eyebrow">Dashboard quản lý tài liệu</span>
             <h1>Kho tài liệu & sản phẩm hiện đại cho doanh nghiệp</h1>
-            <p>Quản lý bookmarks, ratings, logs, attachments và quy trình duyệt trong một giao diện tối ưu.</p>
+            <p>Quản lý sản phẩm, danh mục, tài liệu và thông báo trong một giao diện gọn gàng.</p>
             <div class="hero-search">
                 <input id="heroSearch" placeholder="Tìm kiếm nhanh...">
                 <button class="btn-primary" id="heroSearchBtn" type="button"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
             </div>
             <div class="hero-stat">
-                <div class="stat-card reveal"><h2 id="statProducts">0</h2><span>Sản phẩm</span></div>
-                <div class="stat-card reveal"><h2 id="statManuals">0</h2><span>Tài liệu</span></div>
-                <div class="stat-card reveal"><h2 id="statCategories">0</h2><span>Danh mục</span></div>
-                <div class="stat-card reveal"><h2 id="statNotifications">0</h2><span>Thông báo</span></div>
+                <div class="stat-card reveal clickable" onclick="showPage('products')"><h2 id="statProducts">0</h2><span>Sản phẩm</span></div>
+                <div class="stat-card reveal clickable" onclick="showPage('documents')"><h2 id="statManuals">0</h2><span>Tài liệu</span></div>
+                <div class="stat-card reveal clickable" onclick="showPage('notifications')"><h2 id="statNotifications">0</h2><span>Thông báo</span></div>
+                <div class="stat-card reveal clickable" onclick="showPage('categories')"><h2 id="statCategories">0</h2><span>Danh mục</span></div>
             </div>
         </div>
         <div class="hero-panel">
             <div class="hero-panel-card">
-                <span class="badge">Tình trạng hệ thống</span>
-                <h3>Ổn định, sẵn sàng mở rộng</h3>
-                <p>Thiết kế theo hướng module hóa, dễ thêm chức năng mới.</p>
+                <span class="badge">Dashboard gọn nhẹ</span>
+                <h3>Điều hướng nhanh</h3>
+                <p>Truy cập ngay các khu vực quan trọng của hệ thống.</p>
             </div>
             <img src="images/banner.svg" alt="Banner" class="hero-image">
         </div>
@@ -105,15 +103,17 @@
             <p>Tài liệu cập nhật gần đây.</p>
         </div>
         <div id="homeManuals" class="card-grid"></div>
+    </section>
 
+    <section id="categories" class="page">
         <div class="section-title reveal">
             <div>
                 <span class="section-kicker">Danh mục</span>
-                <h2>Danh mục</h2>
+                <h2>Danh mục sản phẩm</h2>
             </div>
-            <p>Các nhóm nội dung trong hệ thống.</p>
+            <p>Khách hàng có thể xem danh mục, sản phẩm thuộc danh mục đó.</p>
         </div>
-        <div id="homeCategories" class="card-grid"></div>
+        <div id="categoryGrid" class="card-grid"></div>
     </section>
 
     <section id="products" class="page">
@@ -203,71 +203,6 @@
         </div>
     </section>
 
-    <section id="myDocs" class="page">
-        <div class="section-title reveal"><h2>Tài liệu của tôi</h2><p>Quản lý các tài liệu đã upload.</p></div>
-        <div id="myDocsGrid" class="card-grid"></div>
-    </section>
-
-    <section id="myBookmarks" class="page">
-        <div class="section-title reveal"><h2>Bookmark của tôi</h2><p>Danh sách tài liệu bạn đã lưu.</p></div>
-        <div class="toolbar">
-            <select id="bookmarkCategoryFilter"></select>
-            <select id="bookmarkStatusFilter">
-                <option value="all">Tất cả trạng thái</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
-            </select>
-        </div>
-        <div id="bookmarkGrid" class="card-grid"></div>
-    </section>
-
-    <section id="myRatings" class="page">
-        <div class="section-title reveal"><h2>Đánh giá của tôi</h2><p>Xem và chỉnh sửa các rating bạn đã gửi.</p></div>
-        <div id="myRatingsGrid" class="stack-list"></div>
-    </section>
-
-    <section id="activityLogPage" class="page">
-        <div class="section-title reveal"><h2>Lịch sử hoạt động</h2><p>Timeline các thao tác gần đây.</p></div>
-        <div class="toolbar">
-            <input id="activityDateFilter" type="date">
-            <select id="activityTypeFilter">
-                <option value="all">Tất cả hành động</option>
-                <option value="view_manual">Xem</option>
-                <option value="download_manual">Tải</option>
-                <option value="toggle_bookmark">Bookmark</option>
-                <option value="rate_manual">Đánh giá</option>
-                <option value="upload_manual">Upload</option>
-                <option value="approve_manual">Duyệt</option>
-            </select>
-        </div>
-        <div id="activityLogList" class="stack-list"></div>
-    </section>
-
-    <section id="attachmentsManager" class="page">
-        <div class="section-title reveal"><h2>Attachment manager</h2><p>Quản lý file đính kèm theo tài liệu.</p></div>
-        <div class="panel-card reveal">
-            <div class="toolbar">
-                <select id="attachmentManualFilter"></select>
-                <input id="attachmentNameInput" type="text" placeholder="Tên attachment">
-                <input id="attachmentFileInput" type="file" multiple>
-            </div>
-            <button class="btn-primary" type="button" onclick="uploadAttachments()">Upload attachment</button>
-        </div>
-        <div id="attachmentManagerList" class="stack-list" style="margin-top:16px"></div>
-    </section>
-
-    <section id="upload" class="page">
-        <div class="section-title reveal"><h2>Upload tài liệu</h2><p>User upload sẽ ở trạng thái pending, admin upload hiển thị ngay.</p></div>
-        <form id="uploadForm" class="panel-card upload-form">
-            <div class="form-group"><label>Tiêu đề</label><input id="docTitle" type="text"></div>
-            <div class="form-group"><label>Sản phẩm</label><select id="docProduct"></select></div>
-            <div class="form-group"><label>Danh mục</label><select id="docCategory"></select></div>
-            <div class="form-group"><label>File</label><input id="docFile" type="file" accept=".pdf,.doc,.docx,.xlsx,.zip,.rar"></div>
-            <div class="form-group"><label>Mô tả</label><input id="docDescription" type="text"></div>
-            <button class="btn-primary" type="submit">Upload</button>
-        </form>
-    </section>
-
     <section id="notifications" class="page">
         <div class="section-title reveal"><h2>Thông báo</h2><p>Thông báo hệ thống.</p></div>
         <div id="notificationList" class="stack-list"></div>
@@ -303,8 +238,25 @@
     </section>
 
     <section id="admin" class="page">
-        <div class="section-title reveal"><h2>Trang quản trị</h2><p>Quản lý user, sản phẩm, danh mục, tài liệu và duyệt upload.</p></div>
+        <div class="section-title reveal">
+            <div>
+                <span class="section-kicker">Quản trị</span>
+                <h2>Trang quản trị</h2>
+            </div>
+            <p>Quản lý danh mục, thương hiệu, sản phẩm và tài liệu chờ duyệt.</p>
+        </div>
+
         <div class="admin-grid">
+            <div class="panel-card reveal admin-nav-card">
+                <h3>Điều hướng nhanh</h3>
+                <div class="admin-shortcuts">
+                    <button class="btn-secondary" type="button" onclick="showPage('products')">Sản phẩm</button>
+                    <button class="btn-secondary" type="button" onclick="showPage('documents')">Tài liệu</button>
+                    <button class="btn-secondary" type="button" onclick="showPage('notifications')">Thông báo</button>
+                    <button class="btn-secondary" type="button" onclick="showPage('home')">Trang chủ</button>
+                </div>
+            </div>
+
             <div class="panel-card reveal">
                 <h3>Thống kê</h3>
                 <div class="hero-stat">
@@ -320,24 +272,38 @@
                     <div><strong id="dashboardBookmarks">0</strong><span>Bookmark</span></div>
                 </div>
             </div>
+
             <div class="panel-card reveal">
                 <h3>Danh mục</h3>
                 <div class="admin-form-row">
                     <input id="newCategoryName" placeholder="Tên danh mục">
                     <input id="newCategoryIcon" placeholder="fa-solid fa-folder">
-                    <button class="btn-primary" type="button" onclick="addCategory()">Thêm</button>
+                    <button class="btn-primary" type="button" onclick="openCategoryModal()">Thêm</button>
                 </div>
                 <div id="adminCategoryList"></div>
             </div>
+
+            <div class="panel-card reveal">
+                <h3>Thương hiệu</h3>
+                <div class="admin-form-row">
+                    <input id="newBrandName" placeholder="Tên thương hiệu">
+                    <input id="newBrandLogo" placeholder="Logo / icon URL">
+                    <button class="btn-primary" type="button" onclick="openBrandModal()">Thêm</button>
+                </div>
+                <div id="adminBrandList"></div>
+            </div>
+
             <div class="panel-card reveal">
                 <h3>Sản phẩm</h3>
                 <div class="admin-form-row">
                     <input id="newProductName" placeholder="Tên sản phẩm">
-                    <input id="newProductBrand" placeholder="Thương hiệu">
-                    <button class="btn-primary" type="button" onclick="addProduct()">Thêm</button>
+                    <select id="newProductBrand"></select>
+                    <select id="newProductCategory"></select>
                 </div>
-                <div id="adminProductList"></div>
+                <button class="btn-primary" type="button" onclick="openProductModal()">Thêm sản phẩm</button>
+                <div id="adminProductList" style="margin-top:14px;"></div>
             </div>
+
             <div class="panel-card reveal">
                 <h3>Tài liệu chờ duyệt</h3>
                 <div id="adminManualList"></div>

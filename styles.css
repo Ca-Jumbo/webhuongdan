@@ -395,6 +395,12 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
     align-items:end;
     margin-bottom:14px;
 }
+.admin-shortcuts{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
 
 .form-group{margin-bottom:16px}
 .form-group label{
@@ -441,6 +447,51 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
     display:grid;
     gap:10px;
     margin-top:10px;
+}
+
+.modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.45);
+    z-index:2000;
+    display:none;
+}
+.modal-box{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:min(640px,92vw);
+    background:var(--card);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    z-index:2001;
+    display:none;
+    padding:22px;
+    border:1px solid var(--border);
+}
+.modal-box.show,
+.modal-overlay.show{display:block}
+.modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.modal-actions{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    margin-top:18px;
+    flex-wrap:wrap;
+}
+.modal-form{
+    display:grid;
+    gap:12px;
+}
+.modal-form .form-group{
+    margin:0;
 }
 
 #topButton{
@@ -502,7 +553,8 @@ button:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover)}
 .dark .panel-card,
 .dark .phase-banner,
 .dark .hero-shell,
-.dark .detail-shell{
+.dark .detail-shell,
+.dark .modal-box{
     background:#111827;
 }
 .dark .hero-panel-card{
