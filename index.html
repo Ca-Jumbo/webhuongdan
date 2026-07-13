@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Center</title>
+<title>Nguyễn Hưng Solar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 <div id="drawerOverlay" onclick="toggleDrawer(false)"></div>
 <div id="loading">
     <div class="loader"></div>
-    <h2>MANUAL CENTER</h2>
+    <h2>NGUYỄN HƯNG SOLAR</h2>
     <p>Đang tải hệ thống...</p>
 </div>
 <div class="toast"><span></span></div>
@@ -24,9 +24,13 @@
 
 <header class="topbar">
     <div class="logo" onclick="showPage('home')">
-        <div class="logo-icon"><i class="fa-solid fa-book-open"></i></div>
+        <img id="siteLogo" class="site-logo" alt="Logo">
+        <div class="logo-placeholder" id="logoPlaceholder">
+            <i class="fa-solid fa-image"></i>
+            <span>Logo</span>
+        </div>
         <div>
-            <h2>Manual Center</h2>
+            <h2>Nguyễn Hưng Solar</h2>
             <span id="userRoleLabel">Khách truy cập</span>
         </div>
     </div>
@@ -38,7 +42,6 @@
     </div>
 
     <div class="header-actions">
-        <button class="icon-btn" id="notifyBtn" type="button" title="Thông báo"><i class="fa-regular fa-bell"></i></button>
         <button class="icon-btn mobile-only" id="menuBtn" type="button" onclick="toggleDrawer(true)" title="Menu"><i class="fa-solid fa-bars"></i></button>
         <button class="btn-primary" onclick="showPage('login')" type="button" id="loginBtn">Đăng nhập</button>
         <button class="btn-secondary" id="logoutBtn" type="button" style="display:none;">Đăng xuất</button>
@@ -51,7 +54,7 @@
         <li class="active" onclick="showPage('home')"><i class="fa-solid fa-house"></i> Trang chủ</li>
         <li onclick="showPage('categories')"><i class="fa-solid fa-folder-open"></i> Danh mục</li>
         <li onclick="showPage('products')"><i class="fa-solid fa-box"></i> Sản phẩm</li>
-        <li onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i> Trung tâm tài liệu</li>
+        <li onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i> Tài liệu</li>
         <li onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i> Thông báo</li>
         <li onclick="showPage('profile')"><i class="fa-solid fa-user"></i> Tài khoản</li>
         <li onclick="openAdmin()"><i class="fa-solid fa-lock"></i> Quản trị</li>
@@ -61,27 +64,24 @@
 <main class="app-main">
     <section class="hero-shell reveal">
         <div class="hero-copy">
-            <span class="eyebrow">Dashboard quản lý tài liệu</span>
-            <h1>Kho tài liệu & sản phẩm hiện đại cho doanh nghiệp</h1>
-            <p>Quản lý sản phẩm, danh mục, tài liệu và thông báo trong một giao diện gọn gàng.</p>
+            <span class="eyebrow">Nguyễn Hưng Solar</span>
+            <h1>Giải pháp quản lý sản phẩm và tài liệu</h1>
+            <p>Website đã có khung hoàn chỉnh, hỗ trợ upload logo, banner, login thật và dữ liệu cơ bản.</p>
             <div class="hero-search">
                 <input id="heroSearch" placeholder="Tìm kiếm nhanh...">
                 <button class="btn-primary" id="heroSearchBtn" type="button"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
             </div>
-            <div class="hero-stat">
-                <div class="stat-card reveal clickable" onclick="showPage('products')"><h2 id="statProducts">0</h2><span>Sản phẩm</span></div>
-                <div class="stat-card reveal clickable" onclick="showPage('documents')"><h2 id="statManuals">0</h2><span>Tài liệu</span></div>
-                <div class="stat-card reveal clickable" onclick="showPage('notifications')"><h2 id="statNotifications">0</h2><span>Thông báo</span></div>
-                <div class="stat-card reveal clickable" onclick="showPage('categories')"><h2 id="statCategories">0</h2><span>Danh mục</span></div>
-            </div>
         </div>
         <div class="hero-panel">
             <div class="hero-panel-card">
-                <span class="badge">Dashboard gọn nhẹ</span>
-                <h3>Điều hướng nhanh</h3>
-                <p>Truy cập ngay các khu vực quan trọng của hệ thống.</p>
+                <span class="badge">Banner</span>
+                <h3>Chừa trống banner</h3>
+                <p>Bạn sẽ tải banner từ máy qua chức năng quản trị.</p>
             </div>
-            <img src="images/banner.svg" alt="Banner" class="hero-image">
+            <div class="hero-banner-placeholder">
+                <i class="fa-solid fa-panorama"></i>
+                <span>Vị trí banner</span>
+            </div>
         </div>
     </section>
 
@@ -89,53 +89,26 @@
         <div class="section-title reveal">
             <div>
                 <span class="section-kicker">Tổng quan</span>
-                <h2>Sản phẩm mới</h2>
+                <h2>Trang chủ</h2>
             </div>
-            <p>Những sản phẩm vừa được cập nhật.</p>
+            <p>Khung giao diện cơ bản đã sẵn sàng.</p>
         </div>
-        <div id="homeProducts" class="card-grid"></div>
-
-        <div class="section-title reveal">
-            <div>
-                <span class="section-kicker">Tài liệu</span>
-                <h2>Tài liệu mới</h2>
-            </div>
-            <p>Tài liệu cập nhật gần đây.</p>
+        <div class="card-grid">
+            <div class="card">Sản phẩm</div>
+            <div class="card">Tài liệu</div>
+            <div class="card">Danh mục</div>
         </div>
-        <div id="homeManuals" class="card-grid"></div>
     </section>
 
     <section id="categories" class="page">
-        <div class="section-title reveal">
-            <div>
-                <span class="section-kicker">Danh mục</span>
-                <h2>Danh mục sản phẩm</h2>
-            </div>
-            <p>Khách hàng có thể lọc theo danh mục hoặc xem sản phẩm / tài liệu thuộc danh mục đó.</p>
-        </div>
-        <div class="toolbar">
-            <label class="badge" style="justify-content:flex-start;">
-                <input id="categoryModeProduct" type="checkbox" checked>
-                <span style="margin-left:8px;">Có sản phẩm</span>
-            </label>
-            <label class="badge" style="justify-content:flex-start;">
-                <input id="categoryModeManual" type="checkbox" checked>
-                <span style="margin-left:8px;">Có tài liệu</span>
-            </label>
-        </div>
+        <div class="section-title reveal"><h2>Danh mục</h2><p>Danh mục sản phẩm.</p></div>
         <div id="categoryGrid" class="card-grid"></div>
     </section>
 
     <section id="products" class="page">
-        <div class="section-title reveal">
-            <div>
-                <span class="section-kicker">Sản phẩm</span>
-                <h2>Danh sách sản phẩm</h2>
-            </div>
-            <p>Hiển thị toàn bộ sản phẩm công ty.</p>
-        </div>
+        <div class="section-title reveal"><h2>Sản phẩm</h2><p>Danh sách sản phẩm.</p></div>
         <div class="toolbar">
-            <input id="productSearch" type="text" placeholder="Tìm sản phẩm theo tên, hãng...">
+            <input id="productSearch" type="text" placeholder="Tìm sản phẩm...">
             <select id="productCategoryFilter"></select>
             <select id="productStatusFilter">
                 <option value="all">Tất cả trạng thái</option>
@@ -146,31 +119,8 @@
         <div id="productGrid" class="card-grid"></div>
     </section>
 
-    <section id="productDetail" class="page">
-        <div class="detail-shell reveal">
-            <div class="detail-top">
-                <span class="badge" id="productDetailBrand"></span>
-                <h1 id="productDetailName"></h1>
-                <p id="productDetailDesc"></p>
-                <div class="manual-info">
-                    <span class="badge"><i class="fa-solid fa-file-lines"></i> <span id="productManualCount">0</span> tài liệu</span>
-                </div>
-            </div>
-            <div id="relatedManuals" class="card-grid"></div>
-            <div class="manual-action">
-                <button class="btn-secondary" type="button" onclick="showPage('products')">Quay lại</button>
-            </div>
-        </div>
-    </section>
-
     <section id="documents" class="page">
-        <div class="section-title reveal">
-            <div>
-                <span class="section-kicker">Tài liệu</span>
-                <h2>Trung tâm tài liệu</h2>
-            </div>
-            <p>Tìm kiếm, lọc, tải xuống và xem trực tuyến.</p>
-        </div>
+        <div class="section-title reveal"><h2>Tài liệu</h2><p>Trung tâm tài liệu.</p></div>
         <div class="toolbar">
             <input id="docSearch" type="text" placeholder="Tìm tài liệu...">
             <select id="docFilter"></select>
@@ -184,62 +134,23 @@
         <div id="emptyState" class="empty-state" style="display:none;">Không tìm thấy tài liệu phù hợp.</div>
     </section>
 
-    <section id="manual" class="page">
-        <div class="detail-shell reveal">
-            <div class="detail-top">
-                <span class="manual-tag" id="detailCategory">Danh mục</span>
-                <h1 id="detailName">Tài liệu</h1>
-                <p id="detailDesc">Mô tả tài liệu.</p>
-                <div class="manual-info">
-                    <span class="badge"><i class="fa-regular fa-eye"></i> <span id="detailViews">0</span> lượt xem</span>
-                    <span class="badge"><i class="fa-solid fa-download"></i> <span id="detailDownloads">0</span> lượt tải</span>
-                    <span class="badge" id="detailStatus">Pending</span>
-                </div>
-                <div class="manual-action">
-                    <button class="btn-primary" type="button" id="detailDownloadBtn">Tải tài liệu</button>
-                    <button class="btn-secondary" type="button" onclick="showPage('documents')">Quay lại</button>
-                </div>
-            </div>
-            <div class="content-grid">
-                <div class="preview-box" id="previewBox">
-                    <div class="preview-header">
-                        <h3>Xem trước</h3>
-                        <span class="badge">PDF Preview</span>
-                    </div>
-                    <iframe id="previewFrame" class="preview-frame" title="Preview"></iframe>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <section id="notifications" class="page">
         <div class="section-title reveal"><h2>Thông báo</h2><p>Thông báo hệ thống.</p></div>
         <div id="notificationList" class="stack-list"></div>
     </section>
 
     <section id="profile" class="page">
-        <div class="section-title reveal"><h2>Tài khoản</h2><p>Thông tin người dùng hiện tại.</p></div>
+        <div class="section-title reveal"><h2>Tài khoản</h2><p>Thông tin người dùng.</p></div>
         <div class="panel-card reveal" id="profileBox">Bạn chưa đăng nhập.</div>
-        <div class="panel-card reveal profile-grid">
-            <div>
-                <h3>Hành trình hiện tại</h3>
-                <p id="currentPhaseText">MVP nền tảng: tập trung ổn định các chức năng cốt lõi.</p>
-            </div>
-            <div>
-                <h3>Ưu tiên tiếp theo</h3>
-                <ul id="nextPriorityList"></ul>
-            </div>
-        </div>
     </section>
 
     <section id="login" class="page">
         <div class="auth-wrapper">
             <div class="auth-box reveal">
-                <span class="eyebrow">Authentication</span>
-                <h1>Đăng nhập / Đăng ký</h1>
+                <h1>Đăng nhập</h1>
                 <form id="emailAuthForm">
-                    <div class="form-group"><label>Email</label><input id="authEmail" type="email"></div>
-                    <div class="form-group"><label>Mật khẩu</label><input id="authPassword" type="password"></div>
+                    <div class="form-group"><label>Email</label><input id="authEmail" type="email" required></div>
+                    <div class="form-group"><label>Mật khẩu</label><input id="authPassword" type="password" required></div>
                     <button type="submit" class="btn-primary">Tiếp tục</button>
                 </form>
             </div>
@@ -252,91 +163,61 @@
                 <span class="section-kicker">Quản trị</span>
                 <h2>Trang quản trị</h2>
             </div>
-            <p>Quản lý danh mục, thương hiệu, sản phẩm và tài liệu chờ duyệt.</p>
+            <p>Chỉnh logo, banner, biểu đồ, xuất nhập dữ liệu và điều hướng nhanh.</p>
         </div>
 
         <div class="admin-grid">
-            <div class="panel-card reveal admin-nav-card">
-                <h3>Điều hướng nhanh</h3>
-                <div class="admin-shortcuts">
-                    <button class="btn-secondary" type="button" onclick="showPage('products')">Sản phẩm</button>
-                    <button class="btn-secondary" type="button" onclick="showPage('documents')">Tài liệu</button>
-                    <button class="btn-secondary" type="button" onclick="showPage('notifications')">Thông báo</button>
-                    <button class="btn-secondary" type="button" onclick="showPage('home')">Trang chủ</button>
+            <div class="panel-card reveal">
+                <h3>Logo và banner</h3>
+                <div class="admin-media-grid">
+                    <div class="admin-media-slot">
+                        <div class="media-placeholder" id="logoPreviewBox">Logo trống</div>
+                        <div class="action-row">
+                            <button class="btn-secondary" type="button" onclick="pickBrandLogo()">Chọn logo từ máy</button>
+                            <button class="btn-danger" type="button" onclick="clearLogo()">Xóa logo</button>
+                        </div>
+                        <input id="logoInput" type="file" accept="image/*" hidden>
+                    </div>
+                    <div class="admin-media-slot">
+                        <div class="media-placeholder media-banner" id="bannerPreviewBox">Banner trống</div>
+                        <div class="action-row">
+                            <button class="btn-secondary" type="button" onclick="pickProductImage()">Chọn banner từ máy</button>
+                            <button class="btn-danger" type="button" onclick="clearBanner()">Xóa banner</button>
+                        </div>
+                        <input id="bannerInput" type="file" accept="image/*" hidden>
+                    </div>
                 </div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Điều hướng nhanh</h3>
+                <p>Kéo tối đa 4 ô vào vùng điều hướng nhanh. Các ô chưa chọn nằm bên dưới dạng danh sách.</p>
+                <div id="quickNavSlots" class="quick-nav-slots"></div>
+                <div id="quickNavPool" class="quick-nav-pool"></div>
             </div>
 
             <div class="panel-card reveal">
                 <h3>Thống kê</h3>
-                <div class="hero-stat">
-                    <div><h2 id="totalUsers">0</h2><span>User</span></div>
-                    <div><h2 id="totalProducts">0</h2><span>Sản phẩm</span></div>
-                    <div><h2 id="totalDocs">0</h2><span>Tài liệu</span></div>
-                    <div><h2 id="totalViews">0</h2><span>Lượt xem</span></div>
-                </div>
-                <div class="phase-mini">
-                    <div><strong id="dashboardDownloads">0</strong><span>Lượt tải</span></div>
-                    <div><strong id="dashboardPending">0</strong><span>Chờ duyệt</span></div>
-                    <div><strong id="dashboardToday">0</strong><span>Upload hôm nay</span></div>
-                    <div><strong id="dashboardBookmarks">0</strong><span>Bookmark</span></div>
+                <div class="chart-box">
+                    <canvas id="statsChart" width="420" height="220"></canvas>
                 </div>
             </div>
 
             <div class="panel-card reveal">
-                <h3>Danh mục</h3>
-                <div class="admin-form-row">
-                    <input id="newCategoryName" placeholder="Tên danh mục">
-                    <button class="btn-secondary" type="button" onclick="pickCategoryIcon()">Chọn icon từ máy</button>
-                    <button class="btn-primary" type="button" onclick="openCategoryModal()">Thêm</button>
-                </div>
-                <input id="newCategoryIcon" type="hidden">
-                <div id="categoryIconPreview" class="file-preview"></div>
-                <div id="adminCategoryList"></div>
-            </div>
-
-            <div class="panel-card reveal">
-                <h3>Thương hiệu</h3>
-                <div class="admin-form-row">
-                    <input id="newBrandName" placeholder="Tên thương hiệu">
-                    <button class="btn-secondary" type="button" onclick="pickBrandLogo()">Chọn logo từ máy</button>
-                    <button class="btn-primary" type="button" onclick="openBrandModal()">Thêm</button>
-                </div>
-                <input id="newBrandLogo" type="hidden">
-                <div id="brandLogoPreview" class="file-preview"></div>
-                <div id="adminBrandList"></div>
-            </div>
-
-            <div class="panel-card reveal">
-                <h3>Sản phẩm</h3>
-                <div class="admin-form-row">
-                    <input id="newProductName" placeholder="Tên sản phẩm">
-                    <select id="newProductBrand"></select>
-                    <select id="newProductCategory"></select>
-                </div>
-                <div class="admin-form-row">
-                    <button class="btn-secondary" type="button" onclick="pickProductImage()">Chọn hình ảnh từ máy</button>
-                    <button class="btn-primary" type="button" onclick="openProductModal()">Thêm sản phẩm</button>
-                </div>
-                <input id="newProductImage" type="hidden">
-                <div id="productImagePreview" class="file-preview"></div>
-                <div id="adminProductList" style="margin-top:14px;"></div>
-            </div>
-
-            <div class="panel-card reveal">
-                <h3>Tài liệu chờ duyệt</h3>
-                <div id="adminManualList"></div>
-            </div>
-
-            <div class="panel-card reveal">
-                <h3>Quản trị nhanh</h3>
-                <div class="admin-shortcuts">
-                    <button class="btn-secondary" type="button" onclick="exportAllData()">Xuất dữ liệu</button>
+                <h3>Xuất / nhập dữ liệu</h3>
+                <div class="data-transfer-grid">
+                    <select id="dataExportTarget">
+                        <option value="all">Tất cả dữ liệu</option>
+                        <option value="categories">Danh mục</option>
+                        <option value="products">Sản phẩm</option>
+                        <option value="manuals">Tài liệu</option>
+                        <option value="notifications">Thông báo</option>
+                    </select>
+                    <button class="btn-secondary" type="button" onclick="exportSelectedData()">Xuất dữ liệu</button>
                     <label class="btn-secondary file-btn">
                         Nhập dữ liệu
                         <input id="importJsonInput" type="file" accept=".json" onchange="handleImportJson(this.files[0])">
                     </label>
-                    <button class="btn-secondary" type="button" onclick="showPage('categories')">Xem danh mục</button>
-                    <button class="btn-secondary" type="button" onclick="showPage('products')">Xem sản phẩm</button>
                 </div>
             </div>
         </div>
