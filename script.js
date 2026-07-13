@@ -28,6 +28,13 @@ let selectedQuickNav = loadQuickNav();
 let draggingNavId = null;
 let quickNavBound = false;
 
+const state = {
+  categories: [],
+  products: [],
+  manuals: [],
+  notifications: []
+};
+
 const sampleData = {
   categories: [
     { id: 1, name: "Pin năng lượng mặt trời" },
@@ -60,6 +67,18 @@ function saveQuickNav() {
   localStorage.setItem(STORAGE_KEYS.quickNav, JSON.stringify(selectedQuickNav));
 }
 
+function userRole() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null")?.role || "guest";
+  } catch {
+    return "guest";
+  }
+}
+
+function isAdmin() {
+  return ["super_admin", "admin"].includes(userRole());
+}
+
 function showToast(msg) {
   const el = $(".toast");
   if (!el) return;
@@ -70,8 +89,10 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove("show"), 1800);
 }
 
-function toggleDrawer(open) {
-  document.body.classList.toggle("drawer-open", open);
+function toggleDrawer(force) {
+  const drawer = $("#sidebar");
+  const open = typeof force === "boolean" ? force : !drawer?.classList.contains("show");
+  if (drawer) drawer.classList.toggle("show", open);
 }
 
 function closeModal() {
@@ -79,74 +100,41 @@ function closeModal() {
   $("#modalOverlay")?.classList.remove("show");
 }
 
+function setActiveSidebar(id) {
+  $$("#sidebar li").forEach(li => li.classList.remove("active"));
+  const map = { home: 0, categories: 1, products: 2, documents: 3, notifications: 4, profile: 5, admin: 6 };
+  $$("#sidebar li")[map[id]]?.classList.add("active");
+}
+
 function showPage(id) {
+  if (id === "admin" && !isAdmin()) {
+    showToast("Chỉ tài khoản admin mới được truy cập.");
+    showPage("home");
+    return;
+  }
   $$(".page").forEach(p => p.classList.remove("active"));
   const page = document.getElementById(id);
   if (page) page.classList.add("active");
-  document.body.classList.remove("drawer-open");
+  setActiveSidebar(id);
+  $("#sidebar")?.classList.remove("show");
+  if (id === "admin") {
+    refreshAdminAccess();
+    renderChart();
+    renderQuickNav();
+  }
+}
+
+function goHome() {
+  location.reload();
 }
 
 function openAdmin() {
   showPage("admin");
-  renderChart();
-  renderQuickNav();
-}
-
-function renderCategories() {
-  const el = $("#categoryGrid");
-  if (!el) return;
-  el.innerHTML = sampleData.categories.map(i => `<div class="card"><h3>${escapeHtml(i.name)}</h3></div>`).join("");
-}
-
-function renderProducts() {
-  const el = $("#productGrid");
-  if (!el) return;
-
-  const q = ($("#productSearch")?.value || "").trim().toLowerCase();
-  const cat = $("#productCategoryFilter")?.value || "all";
-  const status = $("#productStatusFilter")?.value || "all";
-
-  const items = sampleData.products.filter(p => {
-    const matchText = !q || String(p.name || "").toLowerCase().includes(q) || String(p.category || "").toLowerCase().includes(q);
-    const matchCat = cat === "all" || String(p.category || "") === cat;
-    const matchStatus = status === "all" || p.status === status;
-    return matchText && matchCat && matchStatus;
-  });
-
-  el.innerHTML = items.map(i => `<div class="card"><h3>${escapeHtml(i.name)}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status)}</p></div>`).join("");
-}
-
-function renderDocuments() {
-  const el = $("#manualGrid");
-  if (!el) return;
-
-  const q = ($("#docSearch")?.value || "").trim().toLowerCase();
-  const cat = $("#docFilter")?.value || "all";
-  const status = $("#docStatusFilter")?.value || "all";
-
-  const items = sampleData.manuals.filter(m => {
-    const matchText = !q || String(m.title || "").toLowerCase().includes(q) || String(m.category || "").toLowerCase().includes(q);
-    const matchCat = cat === "all" || String(m.category || "") === cat;
-    const matchStatus = status === "all" || m.status === status;
-    return matchText && matchCat && matchStatus;
-  });
-
-  el.innerHTML = items.map(i => `<div class="card"><h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status)}</p></div>`).join("");
-
-  const empty = $("#emptyState");
-  if (empty) empty.style.display = items.length ? "none" : "block";
-}
-
-function renderNotifications() {
-  const el = $("#notificationList");
-  if (!el) return;
-  el.innerHTML = sampleData.notifications.map(i => `<div class="card"><h3>${escapeHtml(i.text)}</h3></div>`).join("");
 }
 
 function renderProfile() {
-  const el = $("#profileBox");
   const user = getCurrentUser();
-
+  const el = $("#profileBox");
   if (el) {
     el.innerHTML = user
       ? `<strong>${escapeHtml(user.email || "Người dùng")}</strong><br><span>Vai trò: ${escapeHtml(user.role || "user")}</span>`
@@ -162,12 +150,21 @@ function renderProfile() {
     logoutBtn.style.display = user ? "inline-flex" : "none";
     loginBtn.style.display = user ? "none" : "inline-flex";
   }
+  refreshAdminAccess();
+}
+
+function refreshAdminAccess() {
+  const adminAllowed = isAdmin();
+  $$(".admin-only").forEach(el => {
+    el.style.display = adminAllowed ? "" : "none";
+  });
+  const adminPage = $("#admin");
+  if (adminPage) adminPage.style.display = adminAllowed || adminPage.classList.contains("active") ? "" : "none";
 }
 
 function getCurrentUser() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.user);
-    return raw ? JSON.parse(raw) : null;
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null");
   } catch {
     return null;
   }
@@ -185,9 +182,87 @@ function clearAuthState() {
   renderProfile();
 }
 
+async function loadRemoteData() {
+  try {
+    const [c, p, m, n] = await Promise.all([
+      fetch("/api/categories").then(r => r.json()).catch(() => null),
+      fetch("/api/products").then(r => r.json()).catch(() => null),
+      fetch("/api/manuals").then(r => r.json()).catch(() => null),
+      apiFetch("/api/notifications").catch(() => null)
+    ]);
+    state.categories = c?.success && Array.isArray(c.data) ? c.data : sampleData.categories;
+    state.products = p?.success && Array.isArray(p.data) ? p.data : sampleData.products;
+    state.manuals = m?.success && Array.isArray(m.data) ? m.data : sampleData.manuals;
+    state.notifications = n?.success && Array.isArray(n.data) ? n.data : sampleData.notifications;
+  } catch {
+    state.categories = sampleData.categories;
+    state.products = sampleData.products;
+    state.manuals = sampleData.manuals;
+    state.notifications = sampleData.notifications;
+  }
+}
+
+async function apiFetch(url, options = {}) {
+  const token = localStorage.getItem(STORAGE_KEYS.token) || "";
+  const headers = { ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(url, { ...options, headers });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || "Request failed");
+  return json;
+}
+
+function renderCategories() {
+  const el = $("#categoryGrid");
+  if (!el) return;
+  el.innerHTML = (state.categories.length ? state.categories : sampleData.categories)
+    .map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3></div>`).join("");
+}
+
+function renderProducts() {
+  const el = $("#productGrid");
+  if (!el) return;
+  const data = state.products.length ? state.products : sampleData.products;
+  const q = ($("#productSearch")?.value || "").trim().toLowerCase();
+  const cat = $("#productCategoryFilter")?.value || "all";
+  const status = $("#productStatusFilter")?.value || "all";
+  const items = data.filter(p => {
+    const text = `${p.name || ""} ${p.category || ""}`.toLowerCase();
+    return (!q || text.includes(q)) && (cat === "all" || String(p.category || "") === cat) && (status === "all" || String(p.status || "") === status);
+  });
+  el.innerHTML = items.length
+    ? items.map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("")
+    : `<div class="empty-state">Không có sản phẩm phù hợp.</div>`;
+}
+
+function renderDocuments() {
+  const el = $("#manualGrid");
+  if (!el) return;
+  const data = state.manuals.length ? state.manuals : sampleData.manuals;
+  const q = ($("#docSearch")?.value || "").trim().toLowerCase();
+  const cat = $("#docFilter")?.value || "all";
+  const status = $("#docStatusFilter")?.value || "all";
+  const items = data.filter(m => {
+    const text = `${m.title || ""} ${m.category || ""}`.toLowerCase();
+    return (!q || text.includes(q)) && (cat === "all" || String(m.category || "") === cat) && (status === "all" || String(m.status || "") === status);
+  });
+  el.innerHTML = items.length
+    ? items.map(i => `<div class="card"><h3>${escapeHtml(i.title || "")}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("")
+    : "";
+  $("#emptyState") && ($("#emptyState").style.display = items.length ? "none" : "block");
+}
+
+function renderNotifications() {
+  const el = $("#notificationList");
+  if (!el) return;
+  const items = state.notifications.length ? state.notifications : sampleData.notifications;
+  el.innerHTML = items.map(i => `<div class="card"><h3>${escapeHtml(i.text || i.title || "")}</h3></div>`).join("");
+}
+
 function exportSelectedData() {
+  if (!isAdmin()) return showToast("Chỉ admin mới được xuất dữ liệu.");
   const target = $("#dataExportTarget")?.value || "all";
-  const payload = target === "all" ? sampleData : { [target]: sampleData[target] || [] };
+  const payload = target === "all" ? { categories: state.categories, products: state.products, manuals: state.manuals, notifications: state.notifications } : { [target]: state[target] || [] };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -198,15 +273,16 @@ function exportSelectedData() {
 }
 
 function handleImportJson(file) {
+  if (!isAdmin()) return showToast("Chỉ admin mới được nhập dữ liệu.");
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
-      if (data.categories) sampleData.categories = data.categories;
-      if (data.products) sampleData.products = data.products;
-      if (data.manuals) sampleData.manuals = data.manuals;
-      if (data.notifications) sampleData.notifications = data.notifications;
+      if (data.categories) state.categories = data.categories;
+      if (data.products) state.products = data.products;
+      if (data.manuals) state.manuals = data.manuals;
+      if (data.notifications) state.notifications = data.notifications;
       fillFilters();
       renderAll();
       showToast("Đã nhập dữ liệu.");
@@ -232,65 +308,31 @@ function renderChart() {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-
-  const dpr = window.devicePixelRatio || 1;
-  const cssWidth = canvas.clientWidth || 420;
-  const cssHeight = canvas.clientHeight || 220;
-
-  canvas.width = cssWidth * dpr;
-  canvas.height = cssHeight * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const width = cssWidth;
-  const height = cssHeight;
-  ctx.clearRect(0, 0, width, height);
-
-  const values = [sampleData.categories.length, sampleData.products.length, sampleData.manuals.length, sampleData.notifications.length];
+  const width = canvas.clientWidth || 420;
+  const height = canvas.clientHeight || 220;
+  const values = [state.categories.length || 1, state.products.length || 1, state.manuals.length || 1, state.notifications.length || 1];
   const labels = ["Danh mục", "Sản phẩm", "Tài liệu", "Thông báo"];
   const colors = ["#2563eb", "#7c3aed", "#10b981", "#f59e0b"];
   const max = Math.max(...values, 1);
-
-  const chartX = 22;
-  const chartY = 22;
-  const chartW = width - 44;
-  const chartH = height - 56;
-  const gap = 14;
-  const barW = (chartW - gap * 3) / 4;
-  const baseY = chartY + chartH;
-
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, "#ffffff");
-  bg.addColorStop(1, "#f8fbff");
-  ctx.fillStyle = bg;
+  canvas.width = width * (window.devicePixelRatio || 1);
+  canvas.height = height * (window.devicePixelRatio || 1);
+  ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  const chartX = 22, chartY = 22, chartW = width - 44, chartH = height - 56, gap = 14, barW = (chartW - gap * 3) / 4, baseY = chartY + chartH;
+  ctx.fillStyle = "#fff";
   drawRoundedRect(ctx, 0, 0, width, height, 20);
   ctx.fill();
-
-  ctx.strokeStyle = "rgba(15,23,42,.08)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = chartY + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(chartX, y);
-    ctx.lineTo(chartX + chartW, y);
-    ctx.stroke();
-  }
-
   values.forEach((v, i) => {
     const x = chartX + i * (barW + gap);
     const barH = Math.max(18, (v / max) * (chartH - 18));
     const y = baseY - barH;
-    ctx.shadowColor = "rgba(37,99,235,.18)";
-    ctx.shadowBlur = 12;
     ctx.fillStyle = colors[i];
     drawRoundedRect(ctx, x, y, barW, barH, 16);
     ctx.fill();
-    ctx.shadowBlur = 0;
-
     ctx.fillStyle = "#0f172a";
     ctx.font = "700 16px Inter";
     ctx.textAlign = "center";
     ctx.fillText(String(v), x + barW / 2, y - 10);
-
     ctx.fillStyle = "#334155";
     ctx.font = "600 13px Inter";
     ctx.fillText(labels[i], x + barW / 2, baseY + 18);
@@ -300,10 +342,8 @@ function renderChart() {
 function bindQuickNav() {
   if (quickNavBound) return;
   quickNavBound = true;
-
   const slots = $("#quickNavSlots");
   const pool = $("#quickNavPool");
-
   if (slots) {
     slots.addEventListener("dragover", e => e.preventDefault());
     slots.addEventListener("drop", e => {
@@ -317,7 +357,6 @@ function bindQuickNav() {
       }
     });
   }
-
   if (pool) {
     pool.addEventListener("dragover", e => e.preventDefault());
     pool.addEventListener("drop", e => {
@@ -334,26 +373,10 @@ function renderQuickNav() {
   const slots = $("#quickNavSlots");
   const pool = $("#quickNavPool");
   if (!slots || !pool) return;
-
   const selected = NAV_ITEMS.filter(i => selectedQuickNav.includes(i.id)).slice(0, 4);
   const unselected = NAV_ITEMS.filter(i => !selectedQuickNav.includes(i.id));
-
-  slots.innerHTML = selected.length
-    ? selected.map((item, idx) => `
-      <div class="quick-nav-item" draggable="true" data-id="${item.id}" data-slot="${idx}">
-        <span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span>
-        <small>Slot ${idx + 1}</small>
-      </div>
-    `).join("")
-    : `<div class="quick-nav-empty">Thả mục vào đây</div>`;
-
-  pool.innerHTML = unselected.map(item => `
-    <div class="quick-nav-item" draggable="true" data-id="${item.id}">
-      <span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span>
-      <small>Kéo lên trên</small>
-    </div>
-  `).join("");
-
+  slots.innerHTML = selected.length ? selected.map((item, idx) => `<div class="quick-nav-item" draggable="true" data-id="${item.id}" data-slot="${idx}"><span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span><small>Slot ${idx + 1}</small></div>`).join("") : `<div class="quick-nav-empty">Thả mục vào đây</div>`;
+  pool.innerHTML = unselected.map(item => `<div class="quick-nav-item" draggable="true" data-id="${item.id}"><span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span><small>Kéo lên trên</small></div>`).join("");
   [...slots.querySelectorAll(".quick-nav-item"), ...pool.querySelectorAll(".quick-nav-item")].forEach(el => {
     el.addEventListener("dragstart", (e) => {
       draggingNavId = el.dataset.id;
@@ -367,7 +390,6 @@ function renderQuickNav() {
       el.classList.remove("dragging");
     });
   });
-
   [...slots.querySelectorAll(".quick-nav-item")].forEach((el) => {
     el.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -380,7 +402,6 @@ function renderQuickNav() {
       moveQuickNavToIndex(draggingNavId, Number(el.dataset.slot));
     });
   });
-
   bindQuickNav();
 }
 
@@ -435,55 +456,33 @@ function fileToBase64(file) {
 async function uploadToSupabaseStorage(file, bucket = "images") {
   const token = localStorage.getItem(STORAGE_KEYS.token) || "";
   if (!token) throw new Error("Chưa đăng nhập");
-
   const fileBase64 = await fileToBase64(file);
   const res = await fetch("/api/upload", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      fileName: file.name,
-      fileBase64,
-      mimeType: file.type || "application/octet-stream",
-      bucket
-    })
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fileName: file.name, fileBase64, mimeType: file.type || "application/octet-stream", bucket })
   });
-
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.message || "Upload lỗi");
   return json.fileUrl;
 }
 
 async function handleLogoInput(file) {
+  if (!isAdmin()) return showToast("Chỉ admin mới được thay đổi logo.");
   if (!file) return;
   const dataUrl = await dataUrlFromFile(file);
   await applyLogo(dataUrl);
-  showToast("Đã lưu logo vào localStorage.");
-
-  try {
-    const url = await uploadToSupabaseStorage(file, "images");
-    localStorage.setItem(STORAGE_KEYS.logoSupabase, url);
-    showToast("Đã upload logo lên Supabase.");
-  } catch {
-    showToast("Upload Supabase chưa thành công.");
-  }
+  try { localStorage.setItem(STORAGE_KEYS.logoSupabase, await uploadToSupabaseStorage(file, "images")); } catch {}
+  showToast("Đã cập nhật logo.");
 }
 
 async function handleBannerInput(file) {
+  if (!isAdmin()) return showToast("Chỉ admin mới được thay đổi banner.");
   if (!file) return;
   const dataUrl = await dataUrlFromFile(file);
   await applyBanner(dataUrl);
-  showToast("Đã lưu banner vào localStorage.");
-
-  try {
-    const url = await uploadToSupabaseStorage(file, "images");
-    localStorage.setItem(STORAGE_KEYS.bannerSupabase, url);
-    showToast("Đã upload banner lên Supabase.");
-  } catch {
-    showToast("Upload Supabase chưa thành công.");
-  }
+  try { localStorage.setItem(STORAGE_KEYS.bannerSupabase, await uploadToSupabaseStorage(file, "images")); } catch {}
+  showToast("Đã cập nhật banner.");
 }
 
 function restoreMediaFromStorage() {
@@ -496,19 +495,12 @@ function restoreMediaFromStorage() {
 function restoreMediaFromSupabase() {
   const logoUrl = localStorage.getItem(STORAGE_KEYS.logoSupabase);
   const bannerUrl = localStorage.getItem(STORAGE_KEYS.bannerSupabase);
-
   if (logoUrl) {
-    const img = $("#siteLogo");
-    const placeholder = $("#logoPlaceholder");
-    const logoBox = $(".logo");
-    if (img) {
-      img.src = logoUrl;
-      img.style.display = "block";
-    }
+    const img = $("#siteLogo"), placeholder = $("#logoPlaceholder"), logoBox = $(".logo");
+    if (img) { img.src = logoUrl; img.style.display = "block"; }
     if (placeholder) placeholder.style.display = "none";
     if (logoBox) logoBox.classList.add("has-image");
   }
-
   if (bannerUrl) {
     const box = $("#bannerPreviewBox");
     if (box) {
@@ -524,18 +516,12 @@ function restoreMedia() {
 }
 
 function clearLogo() {
+  if (!isAdmin()) return showToast("Chỉ admin mới được xóa logo.");
   if (!confirm("Bạn có chắc muốn xóa logo không?")) return;
   localStorage.removeItem(STORAGE_KEYS.logo);
   localStorage.removeItem(STORAGE_KEYS.logoSupabase);
-
-  const img = $("#siteLogo");
-  const placeholder = $("#logoPlaceholder");
-  const logoBox = $(".logo");
-  const input = $("#logoInput");
-  if (img) {
-    img.removeAttribute("src");
-    img.style.display = "none";
-  }
+  const img = $("#siteLogo"), placeholder = $("#logoPlaceholder"), logoBox = $(".logo"), input = $("#logoInput");
+  if (img) { img.removeAttribute("src"); img.style.display = "none"; }
   if (placeholder) placeholder.style.display = "flex";
   if (logoBox) logoBox.classList.remove("has-image");
   if ($("#logoPreviewBox")) $("#logoPreviewBox").textContent = "Logo trống";
@@ -544,30 +530,21 @@ function clearLogo() {
 }
 
 function clearBanner() {
+  if (!isAdmin()) return showToast("Chỉ admin mới được xóa banner.");
   if (!confirm("Bạn có chắc muốn xóa banner không?")) return;
   localStorage.removeItem(STORAGE_KEYS.banner);
   localStorage.removeItem(STORAGE_KEYS.bannerSupabase);
-
-  const box = $("#bannerPreviewBox");
-  const input = $("#bannerInput");
-  if (box) {
-    box.textContent = "Banner trống";
-    box.classList.remove("has-image");
-  }
+  const box = $("#bannerPreviewBox"), input = $("#bannerInput");
+  if (box) { box.textContent = "Banner trống"; box.classList.remove("has-image"); }
   if (input) input.value = "";
   showToast("Đã xóa banner.");
 }
 
-function pickBrandLogo() { $("#logoInput")?.click(); }
-function pickProductImage() { $("#bannerInput")?.click(); }
+function pickBrandLogo() { if (isAdmin()) $("#logoInput")?.click(); }
+function pickProductImage() { if (isAdmin()) $("#bannerInput")?.click(); }
 
 function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 async function login(email, password) {
@@ -586,25 +563,9 @@ function searchAll(keyword) {
   const q = (keyword || "").trim().toLowerCase();
   if (!q) return [];
   const results = [];
-
-  sampleData.products.forEach(x => {
-    if (String(x.name || "").toLowerCase().includes(q) || String(x.category || "").toLowerCase().includes(q)) {
-      results.push({ type: "product", text: x.name });
-    }
-  });
-
-  sampleData.manuals.forEach(x => {
-    if (String(x.title || "").toLowerCase().includes(q) || String(x.category || "").toLowerCase().includes(q)) {
-      results.push({ type: "manual", text: x.title });
-    }
-  });
-
-  sampleData.categories.forEach(x => {
-    if (String(x.name || "").toLowerCase().includes(q)) {
-      results.push({ type: "category", text: x.name });
-    }
-  });
-
+  [...state.products, ...sampleData.products].forEach(x => { if (String(x.name || "").toLowerCase().includes(q) || String(x.category || "").toLowerCase().includes(q)) results.push({ type: "product", text: x.name }); });
+  [...state.manuals, ...sampleData.manuals].forEach(x => { if (String(x.title || "").toLowerCase().includes(q) || String(x.category || "").toLowerCase().includes(q)) results.push({ type: "manual", text: x.title }); });
+  [...state.categories, ...sampleData.categories].forEach(x => { if (String(x.name || "").toLowerCase().includes(q)) results.push({ type: "category", text: x.name }); });
   return results.slice(0, 6);
 }
 
@@ -612,33 +573,23 @@ function renderSuggestions(keyword) {
   const box = $("#searchSuggest");
   if (!box) return;
   const items = searchAll(keyword);
-
   if (!keyword.trim() || !items.length) {
     box.innerHTML = "";
     box.style.display = "none";
     return;
   }
-
   box.innerHTML = items.map(i => `<div class="suggest-item">${escapeHtml(i.text)}</div>`).join("");
   box.style.display = "block";
 }
 
 function fillFilters() {
-  const productCategoryFilter = $("#productCategoryFilter");
-  const docFilter = $("#docFilter");
-
-  if (productCategoryFilter) {
-    productCategoryFilter.innerHTML = `<option value="all">Tất cả danh mục</option>` +
-      sampleData.categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
-  }
-
-  if (docFilter) {
-    docFilter.innerHTML = `<option value="all">Tất cả danh mục</option>` +
-      sampleData.categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
-  }
+  const categories = state.categories.length ? state.categories : sampleData.categories;
+  const p = $("#productCategoryFilter"), d = $("#docFilter");
+  if (p) p.innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  if (d) d.innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
 }
 
-function renderAll() {
+async function renderAll() {
   fillFilters();
   renderCategories();
   renderProducts();
@@ -650,28 +601,21 @@ function renderAll() {
   restoreMedia();
 }
 
-function init() {
-  $("#loading")?.remove();
-  showPage("home");
-  renderAll();
-
+function bindEvents() {
   $("#themeBtn")?.addEventListener("click", () => {
     darkMode = !darkMode;
     document.documentElement.classList.toggle("dark", darkMode);
   });
-
   $("#logoutBtn")?.addEventListener("click", () => {
     clearAuthState();
     showToast("Đã đăng xuất");
   });
-
   $("#heroSearchBtn")?.addEventListener("click", () => {
     const value = $("#heroSearch")?.value || $("#globalSearch")?.value || "";
     renderSuggestions(value);
     showPage("products");
     renderProducts();
   });
-
   $("#globalSearch")?.addEventListener("input", e => renderSuggestions(e.target.value));
   $("#productSearch")?.addEventListener("input", renderProducts);
   $("#productCategoryFilter")?.addEventListener("change", renderProducts);
@@ -679,28 +623,32 @@ function init() {
   $("#docSearch")?.addEventListener("input", renderDocuments);
   $("#docFilter")?.addEventListener("change", renderDocuments);
   $("#docStatusFilter")?.addEventListener("change", renderDocuments);
-
   $("#emailAuthForm")?.addEventListener("submit", async e => {
     e.preventDefault();
-    const email = $("#authEmail")?.value.trim() || "";
-    const password = $("#authPassword")?.value || "";
     try {
-      await login(email, password);
+      await login($("#authEmail")?.value.trim() || "", $("#authPassword")?.value || "");
       showToast("Đăng nhập thành công.");
       showPage("home");
     } catch (err) {
       showToast(err.message || "Đăng nhập thất bại");
     }
   });
-
   $("#logoInput")?.addEventListener("change", e => handleLogoInput(e.target.files?.[0]));
   $("#bannerInput")?.addEventListener("change", e => handleBannerInput(e.target.files?.[0]));
-
   window.addEventListener("resize", () => {
     if ($("#admin")?.classList.contains("active")) renderChart();
   });
+}
 
+async function init() {
+  $("#loading")?.remove();
+  bindQuickNav();
+  bindEvents();
+  await loadRemoteData();
+  showPage("home");
+  await renderAll();
   renderProfile();
+  refreshAdminAccess();
 }
 
 window.showPage = showPage;
@@ -713,5 +661,6 @@ window.pickBrandLogo = pickBrandLogo;
 window.pickProductImage = pickProductImage;
 window.clearLogo = clearLogo;
 window.clearBanner = clearBanner;
+window.goHome = goHome;
 
 window.addEventListener("load", init);

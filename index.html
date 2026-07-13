@@ -23,43 +23,43 @@
 <div id="modalBox" class="modal-box" aria-hidden="true"></div>
 
 <header class="topbar">
-    <div class="logo" onclick="showPage('home')">
-        <img id="siteLogo" class="site-logo" alt="Logo">
-        <div class="logo-placeholder" id="logoPlaceholder">
-            <i class="fa-solid fa-image"></i>
-            <span>Logo</span>
+    <div class="topbar-row topbar-main">
+        <div class="logo" onclick="goHome()">
+            <img id="siteLogo" class="site-logo" alt="Logo">
+            <div class="logo-placeholder" id="logoPlaceholder">
+                <i class="fa-solid fa-image"></i>
+                <span>Logo</span>
+            </div>
+            <div>
+                <h2>Nguyễn Hưng Solar</h2>
+                <span id="userRoleLabel">Khách truy cập</span>
+            </div>
         </div>
-        <div>
-            <h2>Nguyễn Hưng Solar</h2>
-            <span id="userRoleLabel">Khách truy cập</span>
+
+        <div class="header-actions">
+            <button class="btn-primary" onclick="showPage('login')" type="button" id="loginBtn">Đăng nhập</button>
+            <button class="btn-secondary" id="logoutBtn" type="button" style="display:none;">Đăng xuất</button>
         </div>
     </div>
 
-    <div class="search-box" id="headerSearch">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input id="globalSearch" type="text" placeholder="Tìm sản phẩm, tài liệu...">
-        <div id="searchSuggest" class="search-suggest"></div>
-    </div>
+    <div class="topbar-row topbar-nav">
+        <nav class="menu-bar">
+            <a href="javascript:void(0)" class="menu-item active" onclick="showPage('home')"><i class="fa-solid fa-house"></i><span>Trang chủ</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="showPage('categories')"><i class="fa-solid fa-folder-open"></i><span>Danh mục</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="showPage('products')"><i class="fa-solid fa-box"></i><span>Sản phẩm</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i><span>Tài liệu</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i><span>Thông báo</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="showPage('profile')"><i class="fa-solid fa-user"></i><span>Tài khoản</span></a>
+            <a href="javascript:void(0)" class="menu-item" onclick="openAdmin()"><i class="fa-solid fa-lock"></i><span>Quản trị</span></a>
+        </nav>
 
-    <div class="header-actions">
-        <button class="icon-btn mobile-only" id="menuBtn" type="button" onclick="toggleDrawer(true)" title="Menu"><i class="fa-solid fa-bars"></i></button>
-        <button class="btn-primary" onclick="showPage('login')" type="button" id="loginBtn">Đăng nhập</button>
-        <button class="btn-secondary" id="logoutBtn" type="button" style="display:none;">Đăng xuất</button>
+        <div class="search-box" id="headerSearch">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="globalSearch" type="text" placeholder="Tìm sản phẩm, tài liệu...">
+            <div id="searchSuggest" class="search-suggest"></div>
+        </div>
     </div>
 </header>
-
-<aside id="sidebar">
-    <div class="sidebar-title">Điều hướng</div>
-    <ul>
-        <li class="active" onclick="showPage('home')"><i class="fa-solid fa-house"></i> Trang chủ</li>
-        <li onclick="showPage('categories')"><i class="fa-solid fa-folder-open"></i> Danh mục</li>
-        <li onclick="showPage('products')"><i class="fa-solid fa-box"></i> Sản phẩm</li>
-        <li onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i> Tài liệu</li>
-        <li onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i> Thông báo</li>
-        <li onclick="showPage('profile')"><i class="fa-solid fa-user"></i> Tài khoản</li>
-        <li onclick="openAdmin()"><i class="fa-solid fa-lock"></i> Quản trị</li>
-    </ul>
-</aside>
 
 <main class="app-main">
     <section class="hero-shell reveal">
@@ -69,7 +69,9 @@
             <p>Website đã có khung hoàn chỉnh, hỗ trợ upload logo, banner, login thật và dữ liệu cơ bản.</p>
             <div class="hero-search">
                 <input id="heroSearch" placeholder="Tìm kiếm nhanh...">
-                <button class="btn-primary" id="heroSearchBtn" type="button"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
+                <button class="btn-primary" id="heroSearchBtn" type="button">
+                    <i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm
+                </button>
             </div>
         </div>
         <div class="hero-panel">
@@ -173,16 +175,16 @@
                     <div class="admin-media-slot">
                         <div class="media-placeholder" id="logoPreviewBox">Logo trống</div>
                         <div class="action-row">
-                            <button class="btn-secondary" type="button" onclick="pickBrandLogo()">Chọn logo từ máy</button>
-                            <button class="btn-danger" type="button" onclick="clearLogo()">Xóa logo</button>
+                            <button class="btn-secondary admin-only" type="button" onclick="pickBrandLogo()">Chọn logo từ máy</button>
+                            <button class="btn-danger admin-only" type="button" onclick="clearLogo()">Xóa logo</button>
                         </div>
                         <input id="logoInput" type="file" accept="image/*" hidden>
                     </div>
                     <div class="admin-media-slot">
                         <div class="media-placeholder media-banner" id="bannerPreviewBox">Banner trống</div>
                         <div class="action-row">
-                            <button class="btn-secondary" type="button" onclick="pickProductImage()">Chọn banner từ máy</button>
-                            <button class="btn-danger" type="button" onclick="clearBanner()">Xóa banner</button>
+                            <button class="btn-secondary admin-only" type="button" onclick="pickProductImage()">Chọn banner từ máy</button>
+                            <button class="btn-danger admin-only" type="button" onclick="clearBanner()">Xóa banner</button>
                         </div>
                         <input id="bannerInput" type="file" accept="image/*" hidden>
                     </div>
@@ -213,8 +215,8 @@
                         <option value="manuals">Tài liệu</option>
                         <option value="notifications">Thông báo</option>
                     </select>
-                    <button class="btn-secondary" type="button" onclick="exportSelectedData()">Xuất dữ liệu</button>
-                    <label class="btn-secondary file-btn">
+                    <button class="btn-secondary admin-only" type="button" onclick="exportSelectedData()">Xuất dữ liệu</button>
+                    <label class="btn-secondary file-btn admin-only">
                         Nhập dữ liệu
                         <input id="importJsonInput" type="file" accept=".json" onchange="handleImportJson(this.files[0])">
                     </label>
