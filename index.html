@@ -41,7 +41,9 @@
                 <i class="fa-solid fa-user"></i>
             </button>
             <div id="accountMenu" class="account-menu">
-                <button type="button" onclick="showPage('login')"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+                <button type="button" id="menuLoginBtn" onclick="showPage('login')"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+                <button type="button" id="menuProfileBtn" onclick="showPage('profile')"><i class="fa-solid fa-user"></i> Tài khoản</button>
+                <button type="button" id="menuAdminBtn" onclick="showPage('admin')"><i class="fa-solid fa-lock"></i> Quản trị</button>
                 <button type="button" id="logoutBtn" style="display:none;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
             </div>
         </div>
@@ -275,5 +277,27 @@
 <button id="themeBtn" type="button" title="Đổi giao diện"><i class="fa-solid fa-moon"></i></button>
 <button id="topButton" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>
 <script src="script.js"></script>
+<script>
+function refreshAccountMenu() {
+    const user = (() => {
+        try { return JSON.parse(localStorage.getItem('nhs_user') || 'null'); } catch { return null; }
+    })();
+    const token = localStorage.getItem('nhs_token');
+    const isAdmin = user && ['super_admin', 'admin', 'editor'].includes(user.role);
+
+    const loginBtn = document.getElementById('menuLoginBtn');
+    const profileBtn = document.getElementById('menuProfileBtn');
+    const adminBtn = document.getElementById('menuAdminBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (loginBtn) loginBtn.style.display = token ? 'none' : 'flex';
+    if (profileBtn) profileBtn.style.display = token ? 'flex' : 'none';
+    if (adminBtn) adminBtn.style.display = isAdmin ? 'flex' : 'none';
+    if (logoutBtn) logoutBtn.style.display = token ? 'flex' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', refreshAccountMenu);
+window.addEventListener('storage', refreshAccountMenu);
+</script>
 </body>
 </html>
