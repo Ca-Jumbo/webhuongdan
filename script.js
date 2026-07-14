@@ -67,6 +67,20 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove("show"), 1800);
 }
 
+function toggleAccountMenu() {
+  $("#accountMenu")?.classList.toggle("show");
+}
+
+function closeAccountMenu() {
+  $("#accountMenu")?.classList.remove("show");
+}
+
+document.addEventListener("click", (e) => {
+  const menu = $("#accountMenu");
+  const btn = $("#accountMenuBtn");
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) closeAccountMenu();
+});
+
 function closeModal() {
   $("#modalBox")?.classList.remove("show");
   $("#modalOverlay")?.classList.remove("show");
@@ -96,9 +110,8 @@ function renderProfile() {
   if (el) el.innerHTML = user ? `<strong>${escapeHtml(user.email || "Người dùng")}</strong><br><span>Vai trò: ${escapeHtml(user.role || "user")}</span>` : "Bạn chưa đăng nhập.";
   const roleLabel = $("#userRoleLabel");
   if (roleLabel) roleLabel.textContent = user ? `Vai trò: ${user.role || "user"}` : "Khách truy cập";
-  const logoutBtn = $("#logoutBtn"), loginBtn = $("#loginBtn");
-  if (logoutBtn && loginBtn) { logoutBtn.style.display = user ? "inline-flex" : "none"; loginBtn.style.display = user ? "none" : "inline-flex"; }
   refreshAdminAccess();
+  closeAccountMenu();
 }
 
 function refreshAdminAccess() {
@@ -501,7 +514,6 @@ async function addProduct() {
   const category = $("#productCategoryInput")?.value || "";
   const status = $("#productStatusInput")?.value || "active";
   if (!name) return showToast("Nhập tên sản phẩm.");
-  const payload = { name, categoryId: null, categoryName: category, status };
   state.products.unshift({ id: String(Date.now()), name, category, status });
   $("#productNameInput").value = "";
   renderAll(); renderAdminLists();
@@ -615,5 +627,6 @@ window.deleteProduct = deleteProduct;
 window.addManual = addManual;
 window.deleteManual = deleteManual;
 window.approveManual = approveManual;
+window.toggleAccountMenu = toggleAccountMenu;
 
 window.addEventListener("load", init);

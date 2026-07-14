@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nguyễn Hưng Solar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,8 +37,13 @@
         </div>
 
         <div class="header-actions">
-            <button class="btn-primary" onclick="showPage('login')" type="button" id="loginBtn">Đăng nhập</button>
-            <button class="btn-secondary" id="logoutBtn" type="button" style="display:none;">Đăng xuất</button>
+            <button class="icon-btn" id="accountMenuBtn" type="button" onclick="toggleAccountMenu()" aria-label="Tài khoản">
+                <i class="fa-solid fa-user"></i>
+            </button>
+            <div id="accountMenu" class="account-menu">
+                <button type="button" onclick="showPage('login')"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+                <button type="button" id="logoutBtn" style="display:none;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+            </div>
         </div>
     </div>
 
@@ -48,8 +54,6 @@
             <a href="javascript:void(0)" class="menu-item" onclick="showPage('products')"><i class="fa-solid fa-box"></i><span>Sản phẩm</span></a>
             <a href="javascript:void(0)" class="menu-item" onclick="showPage('documents')"><i class="fa-solid fa-file-lines"></i><span>Tài liệu</span></a>
             <a href="javascript:void(0)" class="menu-item" onclick="showPage('notifications')"><i class="fa-regular fa-bell"></i><span>Thông báo</span></a>
-            <a href="javascript:void(0)" class="menu-item" onclick="showPage('profile')"><i class="fa-solid fa-user"></i><span>Tài khoản</span></a>
-            <a href="javascript:void(0)" class="menu-item" onclick="openAdmin()"><i class="fa-solid fa-lock"></i><span>Quản trị</span></a>
         </nav>
 
         <div class="search-box" id="headerSearch">
