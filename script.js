@@ -28,29 +28,19 @@ let selectedQuickNav = loadQuickNav();
 let draggingNavId = null;
 let quickNavBound = false;
 
-const state = {
-  categories: [],
-  products: [],
-  manuals: [],
-  notifications: []
-};
+const state = { categories: [], products: [], manuals: [], notifications: [] };
 
 const sampleData = {
-  categories: [
-    { id: 1, name: "Pin năng lượng mặt trời" },
-    { id: 2, name: "Inverter" }
-  ],
+  categories: [{ id: "1", name: "Pin năng lượng mặt trời" }, { id: "2", name: "Inverter" }],
   products: [
-    { id: 1, name: "Solar Panel 550W", status: "active", category: "Pin năng lượng mặt trời" },
-    { id: 2, name: "Hybrid Inverter", status: "hidden", category: "Inverter" }
+    { id: "1", name: "Solar Panel 550W", status: "active", category: "Pin năng lượng mặt trời" },
+    { id: "2", name: "Hybrid Inverter", status: "hidden", category: "Inverter" }
   ],
   manuals: [
-    { id: 1, title: "Hướng dẫn lắp đặt", status: "approved", category: "Pin năng lượng mặt trời" },
-    { id: 2, title: "Tài liệu kỹ thuật", status: "pending", category: "Inverter" }
+    { id: "1", title: "Hướng dẫn lắp đặt", status: "approved", category: "Pin năng lượng mặt trời" },
+    { id: "2", title: "Tài liệu kỹ thuật", status: "pending", category: "Inverter" }
   ],
-  notifications: [
-    { id: 1, text: "Chào mừng bạn đến với Nguyễn Hưng Solar" }
-  ]
+  notifications: [{ id: "1", text: "Chào mừng bạn đến với Nguyễn Hưng Solar" }]
 };
 
 function loadQuickNav() {
@@ -63,21 +53,9 @@ function loadQuickNav() {
   }
 }
 
-function saveQuickNav() {
-  localStorage.setItem(STORAGE_KEYS.quickNav, JSON.stringify(selectedQuickNav));
-}
-
-function userRole() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null")?.role || "guest";
-  } catch {
-    return "guest";
-  }
-}
-
-function isAdmin() {
-  return ["super_admin", "admin"].includes(userRole());
-}
+function saveQuickNav() { localStorage.setItem(STORAGE_KEYS.quickNav, JSON.stringify(selectedQuickNav)); }
+function userRole() { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null")?.role || "guest"; } catch { return "guest"; } }
+function isAdmin() { return ["super_admin", "admin", "editor"].includes(userRole()); }
 
 function showToast(msg) {
   const el = $(".toast");
@@ -89,98 +67,50 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove("show"), 1800);
 }
 
-function toggleDrawer(force) {
-  const drawer = $("#sidebar");
-  const open = typeof force === "boolean" ? force : !drawer?.classList.contains("show");
-  if (drawer) drawer.classList.toggle("show", open);
-}
-
 function closeModal() {
   $("#modalBox")?.classList.remove("show");
   $("#modalOverlay")?.classList.remove("show");
 }
 
 function setActiveSidebar(id) {
-  $$("#sidebar li").forEach(li => li.classList.remove("active"));
   const map = { home: 0, categories: 1, products: 2, documents: 3, notifications: 4, profile: 5, admin: 6 };
-  $$("#sidebar li")[map[id]]?.classList.add("active");
+  $$(".menu-item").forEach(a => a.classList.remove("active"));
+  $$(".menu-item")[map[id]]?.classList.add("active");
 }
 
 function showPage(id) {
-  if (id === "admin" && !isAdmin()) {
-    showToast("Chỉ tài khoản admin mới được truy cập.");
-    showPage("home");
-    return;
-  }
+  if (id === "admin" && !isAdmin()) { showToast("Chỉ tài khoản quản trị mới được truy cập."); showPage("home"); return; }
   $$(".page").forEach(p => p.classList.remove("active"));
   const page = document.getElementById(id);
   if (page) page.classList.add("active");
   setActiveSidebar(id);
-  $("#sidebar")?.classList.remove("show");
-  if (id === "admin") {
-    refreshAdminAccess();
-    renderChart();
-    renderQuickNav();
-  }
+  if (id === "admin") { refreshAdminAccess(); renderChart(); renderQuickNav(); renderAdminLists(); }
 }
 
-function goHome() {
-  location.reload();
-}
-
-function openAdmin() {
-  showPage("admin");
-}
+function goHome() { showPage("home"); }
+function openAdmin() { showPage("admin"); }
 
 function renderProfile() {
   const user = getCurrentUser();
   const el = $("#profileBox");
-  if (el) {
-    el.innerHTML = user
-      ? `<strong>${escapeHtml(user.email || "Người dùng")}</strong><br><span>Vai trò: ${escapeHtml(user.role || "user")}</span>`
-      : "Bạn chưa đăng nhập.";
-  }
-
+  if (el) el.innerHTML = user ? `<strong>${escapeHtml(user.email || "Người dùng")}</strong><br><span>Vai trò: ${escapeHtml(user.role || "user")}</span>` : "Bạn chưa đăng nhập.";
   const roleLabel = $("#userRoleLabel");
   if (roleLabel) roleLabel.textContent = user ? `Vai trò: ${user.role || "user"}` : "Khách truy cập";
-
-  const logoutBtn = $("#logoutBtn");
-  const loginBtn = $("#loginBtn");
-  if (logoutBtn && loginBtn) {
-    logoutBtn.style.display = user ? "inline-flex" : "none";
-    loginBtn.style.display = user ? "none" : "inline-flex";
-  }
+  const logoutBtn = $("#logoutBtn"), loginBtn = $("#loginBtn");
+  if (logoutBtn && loginBtn) { logoutBtn.style.display = user ? "inline-flex" : "none"; loginBtn.style.display = user ? "none" : "inline-flex"; }
   refreshAdminAccess();
 }
 
 function refreshAdminAccess() {
   const adminAllowed = isAdmin();
-  $$(".admin-only").forEach(el => {
-    el.style.display = adminAllowed ? "" : "none";
-  });
+  $$(".admin-only").forEach(el => el.style.display = adminAllowed ? "" : "none");
   const adminPage = $("#admin");
   if (adminPage) adminPage.style.display = adminAllowed || adminPage.classList.contains("active") ? "" : "none";
 }
 
-function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function setAuthState(token, user) {
-  if (token) localStorage.setItem(STORAGE_KEYS.token, token);
-  if (user) localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
-  renderProfile();
-}
-
-function clearAuthState() {
-  localStorage.removeItem(STORAGE_KEYS.token);
-  localStorage.removeItem(STORAGE_KEYS.user);
-  renderProfile();
-}
+function getCurrentUser() { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "null"); } catch { return null; } }
+function setAuthState(token, user) { if (token) localStorage.setItem(STORAGE_KEYS.token, token); if (user) localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user)); renderProfile(); }
+function clearAuthState() { localStorage.removeItem(STORAGE_KEYS.token); localStorage.removeItem(STORAGE_KEYS.user); renderProfile(); }
 
 async function loadRemoteData() {
   try {
@@ -215,8 +145,8 @@ async function apiFetch(url, options = {}) {
 function renderCategories() {
   const el = $("#categoryGrid");
   if (!el) return;
-  el.innerHTML = (state.categories.length ? state.categories : sampleData.categories)
-    .map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3></div>`).join("");
+  const data = state.categories.length ? state.categories : sampleData.categories;
+  el.innerHTML = data.map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3></div>`).join("");
 }
 
 function renderProducts() {
@@ -228,11 +158,9 @@ function renderProducts() {
   const status = $("#productStatusFilter")?.value || "all";
   const items = data.filter(p => {
     const text = `${p.name || ""} ${p.category || ""}`.toLowerCase();
-    return (!q || text.includes(q)) && (cat === "all" || String(p.category || "") === cat) && (status === "all" || String(p.status || "") === status);
+    return (!q || text.includes(q)) && (cat === "all" || String(p.category || p.categoryName || "") === cat) && (status === "all" || String(p.status || "") === status);
   });
-  el.innerHTML = items.length
-    ? items.map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("")
-    : `<div class="empty-state">Không có sản phẩm phù hợp.</div>`;
+  el.innerHTML = items.length ? items.map(i => `<div class="card"><h3>${escapeHtml(i.name || "")}</h3><p>${escapeHtml(i.category || i.categoryName || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("") : `<div class="empty-state">Không có sản phẩm phù hợp.</div>`;
 }
 
 function renderDocuments() {
@@ -244,11 +172,9 @@ function renderDocuments() {
   const status = $("#docStatusFilter")?.value || "all";
   const items = data.filter(m => {
     const text = `${m.title || ""} ${m.category || ""}`.toLowerCase();
-    return (!q || text.includes(q)) && (cat === "all" || String(m.category || "") === cat) && (status === "all" || String(m.status || "") === status);
+    return (!q || text.includes(q)) && (cat === "all" || String(m.category || m.categoryName || "") === cat) && (status === "all" || String(m.status || "") === status);
   });
-  el.innerHTML = items.length
-    ? items.map(i => `<div class="card"><h3>${escapeHtml(i.title || "")}</h3><p>${escapeHtml(i.category || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("")
-    : "";
+  el.innerHTML = items.length ? items.map(i => `<div class="card"><h3>${escapeHtml(i.title || "")}</h3><p>${escapeHtml(i.category || i.categoryName || "")}</p><p>${escapeHtml(i.status || "")}</p></div>`).join("") : "";
   $("#emptyState") && ($("#emptyState").style.display = items.length ? "none" : "block");
 }
 
@@ -257,6 +183,24 @@ function renderNotifications() {
   if (!el) return;
   const items = state.notifications.length ? state.notifications : sampleData.notifications;
   el.innerHTML = items.map(i => `<div class="card"><h3>${escapeHtml(i.text || i.title || "")}</h3></div>`).join("");
+}
+
+function fillFilters() {
+  const categories = state.categories.length ? state.categories : sampleData.categories;
+  const opts = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  if ($("#productCategoryFilter")) $("#productCategoryFilter").innerHTML = opts;
+  if ($("#docFilter")) $("#docFilter").innerHTML = opts;
+  if ($("#productCategoryInput")) $("#productCategoryInput").innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  if ($("#manualCategoryInput")) $("#manualCategoryInput").innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+}
+
+function renderAdminLists() {
+  const categoryList = $("#adminCategoryList");
+  const productList = $("#adminProductList");
+  const manualList = $("#adminManualList");
+  if (categoryList) categoryList.innerHTML = (state.categories || []).map(i => `<div class="admin-row"><div><strong>${escapeHtml(i.name || "")}</strong><br><small>ID: ${escapeHtml(i.id || "")}</small></div><div class="admin-row-actions"><button class="btn-danger" type="button" onclick="deleteCategory('${escapeHtml(i.id || "")}')">Xóa</button></div></div>`).join("");
+  if (productList) productList.innerHTML = (state.products || []).map(i => `<div class="admin-row"><div><strong>${escapeHtml(i.name || "")}</strong><br><small>${escapeHtml(i.status || "")} • ${escapeHtml(i.category || i.categoryName || "")}</small></div><div class="admin-row-actions"><button class="btn-danger" type="button" onclick="deleteProduct('${escapeHtml(i.id || "")}')">Xóa</button></div></div>`).join("");
+  if (manualList) manualList.innerHTML = (state.manuals || []).map(i => `<div class="admin-row"><div><strong>${escapeHtml(i.title || "")}</strong><br><small>${escapeHtml(i.status || "")} • ${escapeHtml(i.category || i.categoryName || "")}</small></div><div class="admin-row-actions"><button class="btn-secondary" type="button" onclick="approveManual('${escapeHtml(i.id || "")}')">Phê duyệt</button><button class="btn-danger" type="button" onclick="deleteManual('${escapeHtml(i.id || "")}')">Xóa</button></div></div>`).join("");
 }
 
 function exportSelectedData() {
@@ -283,12 +227,9 @@ function handleImportJson(file) {
       if (data.products) state.products = data.products;
       if (data.manuals) state.manuals = data.manuals;
       if (data.notifications) state.notifications = data.notifications;
-      fillFilters();
-      renderAll();
+      fillFilters(); renderAll(); renderAdminLists();
       showToast("Đã nhập dữ liệu.");
-    } catch {
-      showToast("File JSON không hợp lệ.");
-    }
+    } catch { showToast("File JSON không hợp lệ."); }
   };
   reader.readAsText(file);
 }
@@ -370,37 +311,19 @@ function bindQuickNav() {
 }
 
 function renderQuickNav() {
-  const slots = $("#quickNavSlots");
-  const pool = $("#quickNavPool");
+  const slots = $("#quickNavSlots"), pool = $("#quickNavPool");
   if (!slots || !pool) return;
   const selected = NAV_ITEMS.filter(i => selectedQuickNav.includes(i.id)).slice(0, 4);
   const unselected = NAV_ITEMS.filter(i => !selectedQuickNav.includes(i.id));
   slots.innerHTML = selected.length ? selected.map((item, idx) => `<div class="quick-nav-item" draggable="true" data-id="${item.id}" data-slot="${idx}"><span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span><small>Slot ${idx + 1}</small></div>`).join("") : `<div class="quick-nav-empty">Thả mục vào đây</div>`;
   pool.innerHTML = unselected.map(item => `<div class="quick-nav-item" draggable="true" data-id="${item.id}"><span><i class="fa-solid ${item.icon}"></i> ${escapeHtml(item.label)}</span><small>Kéo lên trên</small></div>`).join("");
   [...slots.querySelectorAll(".quick-nav-item"), ...pool.querySelectorAll(".quick-nav-item")].forEach(el => {
-    el.addEventListener("dragstart", (e) => {
-      draggingNavId = el.dataset.id;
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", draggingNavId);
-      el.classList.add("dragging");
-    });
-    el.addEventListener("dragend", () => {
-      draggingNavId = null;
-      $$(".quick-nav-item").forEach(x => x.classList.remove("drag-over"));
-      el.classList.remove("dragging");
-    });
+    el.addEventListener("dragstart", (e) => { draggingNavId = el.dataset.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", draggingNavId); el.classList.add("dragging"); });
+    el.addEventListener("dragend", () => { draggingNavId = null; $$(".quick-nav-item").forEach(x => x.classList.remove("drag-over")); el.classList.remove("dragging"); });
   });
-  [...slots.querySelectorAll(".quick-nav-item")].forEach((el) => {
-    el.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      $$(".quick-nav-item").forEach(x => x.classList.remove("drag-over"));
-      el.classList.add("drag-over");
-    });
-    el.addEventListener("drop", (e) => {
-      e.preventDefault();
-      if (!draggingNavId) return;
-      moveQuickNavToIndex(draggingNavId, Number(el.dataset.slot));
-    });
+  [...slots.querySelectorAll(".quick-nav-item")].forEach(el => {
+    el.addEventListener("dragover", (e) => { e.preventDefault(); $$(".quick-nav-item").forEach(x => x.classList.remove("drag-over")); el.classList.add("drag-over"); });
+    el.addEventListener("drop", (e) => { e.preventDefault(); if (!draggingNavId) return; moveQuickNavToIndex(draggingNavId, Number(el.dataset.slot)); });
   });
   bindQuickNav();
 }
@@ -424,24 +347,17 @@ function dataUrlFromFile(file) {
 
 async function applyLogo(dataUrl) {
   localStorage.setItem(STORAGE_KEYS.logo, dataUrl);
-  const img = $("#siteLogo");
-  const placeholder = $("#logoPlaceholder");
-  const logoBox = $(".logo");
-  if (img) {
-    img.src = dataUrl;
-    img.style.display = "block";
-  }
+  const img = $("#siteLogo"), placeholder = $("#logoPlaceholder");
+  if (img) { img.src = dataUrl; img.style.display = "block"; }
   if (placeholder) placeholder.style.display = "none";
-  if (logoBox) logoBox.classList.add("has-image");
+  if ($("#logoPreviewBox")) $("#logoPreviewBox").innerHTML = `<img src="${dataUrl}" alt="Logo">`;
 }
 
 async function applyBanner(dataUrl) {
   localStorage.setItem(STORAGE_KEYS.banner, dataUrl);
-  const box = $("#bannerPreviewBox");
-  if (box) {
-    box.innerHTML = `<img src="${dataUrl}" alt="Banner">`;
-    box.classList.add("has-image");
-  }
+  const box = $("#bannerPreviewBox"), hero = $("#heroBannerBox");
+  if (box) box.innerHTML = `<img src="${dataUrl}" alt="Banner">`;
+  if (hero) hero.innerHTML = `<img src="${dataUrl}" alt="Banner">`;
 }
 
 function fileToBase64(file) {
@@ -485,34 +401,15 @@ async function handleBannerInput(file) {
   showToast("Đã cập nhật banner.");
 }
 
-function restoreMediaFromStorage() {
+function restoreMedia() {
   const logo = localStorage.getItem(STORAGE_KEYS.logo);
   const banner = localStorage.getItem(STORAGE_KEYS.banner);
-  if (logo) applyLogo(logo);
-  if (banner) applyBanner(banner);
-}
-
-function restoreMediaFromSupabase() {
   const logoUrl = localStorage.getItem(STORAGE_KEYS.logoSupabase);
   const bannerUrl = localStorage.getItem(STORAGE_KEYS.bannerSupabase);
-  if (logoUrl) {
-    const img = $("#siteLogo"), placeholder = $("#logoPlaceholder"), logoBox = $(".logo");
-    if (img) { img.src = logoUrl; img.style.display = "block"; }
-    if (placeholder) placeholder.style.display = "none";
-    if (logoBox) logoBox.classList.add("has-image");
-  }
-  if (bannerUrl) {
-    const box = $("#bannerPreviewBox");
-    if (box) {
-      box.innerHTML = `<img src="${bannerUrl}" alt="Banner">`;
-      box.classList.add("has-image");
-    }
-  }
-}
-
-function restoreMedia() {
-  restoreMediaFromStorage();
-  restoreMediaFromSupabase();
+  const finalLogo = logoUrl || logo;
+  const finalBanner = bannerUrl || banner;
+  if (finalLogo) applyLogo(finalLogo);
+  if (finalBanner) applyBanner(finalBanner);
 }
 
 function clearLogo() {
@@ -520,12 +417,10 @@ function clearLogo() {
   if (!confirm("Bạn có chắc muốn xóa logo không?")) return;
   localStorage.removeItem(STORAGE_KEYS.logo);
   localStorage.removeItem(STORAGE_KEYS.logoSupabase);
-  const img = $("#siteLogo"), placeholder = $("#logoPlaceholder"), logoBox = $(".logo"), input = $("#logoInput");
+  const img = $("#siteLogo"), placeholder = $("#logoPlaceholder");
   if (img) { img.removeAttribute("src"); img.style.display = "none"; }
   if (placeholder) placeholder.style.display = "flex";
-  if (logoBox) logoBox.classList.remove("has-image");
   if ($("#logoPreviewBox")) $("#logoPreviewBox").textContent = "Logo trống";
-  if (input) input.value = "";
   showToast("Đã xóa logo.");
 }
 
@@ -534,18 +429,14 @@ function clearBanner() {
   if (!confirm("Bạn có chắc muốn xóa banner không?")) return;
   localStorage.removeItem(STORAGE_KEYS.banner);
   localStorage.removeItem(STORAGE_KEYS.bannerSupabase);
-  const box = $("#bannerPreviewBox"), input = $("#bannerInput");
-  if (box) { box.textContent = "Banner trống"; box.classList.remove("has-image"); }
-  if (input) input.value = "";
+  if ($("#bannerPreviewBox")) $("#bannerPreviewBox").textContent = "Banner trống";
+  if ($("#heroBannerBox")) $("#heroBannerBox").innerHTML = `<i class="fa-solid fa-panorama"></i><span>Vị trí banner</span>`;
   showToast("Đã xóa banner.");
 }
 
 function pickBrandLogo() { if (isAdmin()) $("#logoInput")?.click(); }
 function pickProductImage() { if (isAdmin()) $("#bannerInput")?.click(); }
-
-function escapeHtml(str) {
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
 async function login(email, password) {
   const res = await fetch("/api/login", {
@@ -573,20 +464,94 @@ function renderSuggestions(keyword) {
   const box = $("#searchSuggest");
   if (!box) return;
   const items = searchAll(keyword);
-  if (!keyword.trim() || !items.length) {
-    box.innerHTML = "";
-    box.style.display = "none";
-    return;
-  }
+  if (!keyword.trim() || !items.length) { box.innerHTML = ""; box.style.display = "none"; return; }
   box.innerHTML = items.map(i => `<div class="suggest-item">${escapeHtml(i.text)}</div>`).join("");
   box.style.display = "block";
 }
 
+function normalizeCategoryName(item) { return item.name || item.category || item.categoryName || ""; }
+
+async function addCategory() {
+  if (!isAdmin()) return showToast("Không có quyền.");
+  const name = $("#categoryNameInput")?.value.trim();
+  if (!name) return showToast("Nhập tên danh mục.");
+  try {
+    const data = await apiFetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    state.categories.unshift(data.data);
+    $("#categoryNameInput").value = "";
+    fillFilters(); renderAll(); renderAdminLists();
+    showToast("Đã thêm danh mục.");
+  } catch (e) { showToast(e.message); }
+}
+
+async function deleteCategory(id) {
+  if (!isAdmin()) return;
+  if (!confirm("Xóa danh mục này?")) return;
+  try {
+    await apiFetch(`/api/categories/${id}`, { method: "DELETE" });
+    state.categories = state.categories.filter(x => String(x.id) !== String(id));
+    fillFilters(); renderAll(); renderAdminLists();
+    showToast("Đã xóa danh mục.");
+  } catch (e) { showToast(e.message); }
+}
+
+async function addProduct() {
+  if (!isAdmin()) return showToast("Không có quyền.");
+  const name = $("#productNameInput")?.value.trim();
+  const category = $("#productCategoryInput")?.value || "";
+  const status = $("#productStatusInput")?.value || "active";
+  if (!name) return showToast("Nhập tên sản phẩm.");
+  const payload = { name, categoryId: null, categoryName: category, status };
+  state.products.unshift({ id: String(Date.now()), name, category, status });
+  $("#productNameInput").value = "";
+  renderAll(); renderAdminLists();
+  showToast("Đã thêm sản phẩm.");
+}
+
+async function deleteProduct(id) {
+  if (!isAdmin()) return;
+  if (!confirm("Xóa sản phẩm này?")) return;
+  state.products = state.products.filter(x => String(x.id) !== String(id));
+  renderAll(); renderAdminLists();
+  showToast("Đã xóa sản phẩm.");
+}
+
+async function addManual() {
+  if (!isAdmin()) return showToast("Không có quyền.");
+  const title = $("#manualTitleInput")?.value.trim();
+  const category = $("#manualCategoryInput")?.value || "";
+  const status = $("#manualStatusInput")?.value || "pending";
+  if (!title) return showToast("Nhập tên tài liệu.");
+  state.manuals.unshift({ id: String(Date.now()), title, category, status });
+  $("#manualTitleInput").value = "";
+  renderAll(); renderAdminLists();
+  showToast("Đã thêm tài liệu.");
+}
+
+async function approveManual(id) {
+  if (!isAdmin()) return;
+  const item = state.manuals.find(x => String(x.id) === String(id));
+  if (!item) return;
+  item.status = "approved";
+  renderAll(); renderAdminLists();
+  showToast("Đã phê duyệt tài liệu.");
+}
+
+async function deleteManual(id) {
+  if (!isAdmin()) return;
+  if (!confirm("Xóa tài liệu này?")) return;
+  state.manuals = state.manuals.filter(x => String(x.id) !== String(id));
+  renderAll(); renderAdminLists();
+  showToast("Đã xóa tài liệu.");
+}
+
 function fillFilters() {
   const categories = state.categories.length ? state.categories : sampleData.categories;
-  const p = $("#productCategoryFilter"), d = $("#docFilter");
-  if (p) p.innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
-  if (d) d.innerHTML = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  const opts = `<option value="all">Tất cả danh mục</option>` + categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  if ($("#productCategoryFilter")) $("#productCategoryFilter").innerHTML = opts;
+  if ($("#docFilter")) $("#docFilter").innerHTML = opts;
+  if ($("#productCategoryInput")) $("#productCategoryInput").innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  if ($("#manualCategoryInput")) $("#manualCategoryInput").innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
 }
 
 async function renderAll() {
@@ -598,24 +563,14 @@ async function renderAll() {
   renderProfile();
   renderChart();
   renderQuickNav();
+  renderAdminLists();
   restoreMedia();
 }
 
 function bindEvents() {
-  $("#themeBtn")?.addEventListener("click", () => {
-    darkMode = !darkMode;
-    document.documentElement.classList.toggle("dark", darkMode);
-  });
-  $("#logoutBtn")?.addEventListener("click", () => {
-    clearAuthState();
-    showToast("Đã đăng xuất");
-  });
-  $("#heroSearchBtn")?.addEventListener("click", () => {
-    const value = $("#heroSearch")?.value || $("#globalSearch")?.value || "";
-    renderSuggestions(value);
-    showPage("products");
-    renderProducts();
-  });
+  $("#themeBtn")?.addEventListener("click", () => { darkMode = !darkMode; document.documentElement.classList.toggle("dark", darkMode); });
+  $("#logoutBtn")?.addEventListener("click", () => { clearAuthState(); showToast("Đã đăng xuất"); });
+  $("#heroSearchBtn")?.addEventListener("click", () => { const value = $("#heroSearch")?.value || $("#globalSearch")?.value || ""; renderSuggestions(value); showPage("products"); renderProducts(); });
   $("#globalSearch")?.addEventListener("input", e => renderSuggestions(e.target.value));
   $("#productSearch")?.addEventListener("input", renderProducts);
   $("#productCategoryFilter")?.addEventListener("change", renderProducts);
@@ -625,19 +580,11 @@ function bindEvents() {
   $("#docStatusFilter")?.addEventListener("change", renderDocuments);
   $("#emailAuthForm")?.addEventListener("submit", async e => {
     e.preventDefault();
-    try {
-      await login($("#authEmail")?.value.trim() || "", $("#authPassword")?.value || "");
-      showToast("Đăng nhập thành công.");
-      showPage("home");
-    } catch (err) {
-      showToast(err.message || "Đăng nhập thất bại");
-    }
+    try { await login($("#authEmail")?.value.trim() || "", $("#authPassword")?.value || ""); showToast("Đăng nhập thành công."); showPage("home"); } catch (err) { showToast(err.message || "Đăng nhập thất bại"); }
   });
   $("#logoInput")?.addEventListener("change", e => handleLogoInput(e.target.files?.[0]));
   $("#bannerInput")?.addEventListener("change", e => handleBannerInput(e.target.files?.[0]));
-  window.addEventListener("resize", () => {
-    if ($("#admin")?.classList.contains("active")) renderChart();
-  });
+  window.addEventListener("resize", () => { if ($("#admin")?.classList.contains("active")) renderChart(); });
 }
 
 async function init() {
@@ -653,7 +600,6 @@ async function init() {
 
 window.showPage = showPage;
 window.openAdmin = openAdmin;
-window.toggleDrawer = toggleDrawer;
 window.closeModal = closeModal;
 window.exportSelectedData = exportSelectedData;
 window.handleImportJson = handleImportJson;
@@ -662,5 +608,12 @@ window.pickProductImage = pickProductImage;
 window.clearLogo = clearLogo;
 window.clearBanner = clearBanner;
 window.goHome = goHome;
+window.addCategory = addCategory;
+window.deleteCategory = deleteCategory;
+window.addProduct = addProduct;
+window.deleteProduct = deleteProduct;
+window.addManual = addManual;
+window.deleteManual = deleteManual;
+window.approveManual = approveManual;
 
 window.addEventListener("load", init);

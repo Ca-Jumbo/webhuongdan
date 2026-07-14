@@ -11,7 +11,6 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="drawerOverlay" onclick="toggleDrawer(false)"></div>
 <div id="loading">
     <div class="loader"></div>
     <h2>NGUYỄN HƯNG SOLAR</h2>
@@ -66,7 +65,7 @@
         <div class="hero-copy">
             <span class="eyebrow">Nguyễn Hưng Solar</span>
             <h1>Giải pháp quản lý sản phẩm và tài liệu</h1>
-            <p>Website đã có khung hoàn chỉnh, hỗ trợ upload logo, banner, login thật và dữ liệu cơ bản.</p>
+            <p>Website hỗ trợ logo, banner, đăng nhập, dữ liệu cơ bản và quản trị nội dung.</p>
             <div class="hero-search">
                 <input id="heroSearch" placeholder="Tìm kiếm nhanh...">
                 <button class="btn-primary" id="heroSearchBtn" type="button">
@@ -77,10 +76,10 @@
         <div class="hero-panel">
             <div class="hero-panel-card">
                 <span class="badge">Banner</span>
-                <h3>Chừa trống banner</h3>
-                <p>Bạn sẽ tải banner từ máy qua chức năng quản trị.</p>
+                <h3>Banner trang chủ</h3>
+                <p>Bạn có thể tải banner từ máy qua chức năng quản trị.</p>
             </div>
-            <div class="hero-banner-placeholder">
+            <div class="hero-banner-placeholder" id="heroBannerBox">
                 <i class="fa-solid fa-panorama"></i>
                 <span>Vị trí banner</span>
             </div>
@@ -116,6 +115,7 @@
                 <option value="all">Tất cả trạng thái</option>
                 <option value="active">Active</option>
                 <option value="hidden">Hidden</option>
+                <option value="draft">Draft</option>
             </select>
         </div>
         <div id="productGrid" class="card-grid"></div>
@@ -130,6 +130,8 @@
                 <option value="all">Tất cả trạng thái</option>
                 <option value="approved">Approved</option>
                 <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+                <option value="hidden">Hidden</option>
             </select>
         </div>
         <div id="manualGrid" class="card-grid"></div>
@@ -165,7 +167,7 @@
                 <span class="section-kicker">Quản trị</span>
                 <h2>Trang quản trị</h2>
             </div>
-            <p>Chỉnh logo, banner, biểu đồ, xuất nhập dữ liệu và điều hướng nhanh.</p>
+            <p>Chỉnh logo, banner, danh mục, sản phẩm, tài liệu và thống kê.</p>
         </div>
 
         <div class="admin-grid">
@@ -189,6 +191,46 @@
                         <input id="bannerInput" type="file" accept="image/*" hidden>
                     </div>
                 </div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Quản lý danh mục</h3>
+                <div class="admin-form-grid">
+                    <input id="categoryNameInput" type="text" placeholder="Tên danh mục">
+                    <button class="btn-primary admin-only" type="button" onclick="addCategory()">Thêm danh mục</button>
+                </div>
+                <div id="adminCategoryList" class="admin-list"></div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Quản lý sản phẩm</h3>
+                <div class="admin-form-grid">
+                    <input id="productNameInput" type="text" placeholder="Tên sản phẩm">
+                    <select id="productCategoryInput"></select>
+                    <select id="productStatusInput">
+                        <option value="active">Active</option>
+                        <option value="hidden">Hidden</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                    <button class="btn-primary admin-only" type="button" onclick="addProduct()">Thêm sản phẩm</button>
+                </div>
+                <div id="adminProductList" class="admin-list"></div>
+            </div>
+
+            <div class="panel-card reveal">
+                <h3>Quản lý tài liệu</h3>
+                <div class="admin-form-grid">
+                    <input id="manualTitleInput" type="text" placeholder="Tên tài liệu">
+                    <select id="manualCategoryInput"></select>
+                    <select id="manualStatusInput">
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="hidden">Hidden</option>
+                    </select>
+                    <button class="btn-primary admin-only" type="button" onclick="addManual()">Thêm tài liệu</button>
+                </div>
+                <div id="adminManualList" class="admin-list"></div>
             </div>
 
             <div class="panel-card reveal">
